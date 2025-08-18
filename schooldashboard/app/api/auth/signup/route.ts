@@ -27,6 +27,7 @@ export async function POST(req: Request) {
       name,
       email,
       passwordHash: hashedPassword,
+      role: 'STUDENT', // Signup is only for students
     });
 
     return NextResponse.json(user);
