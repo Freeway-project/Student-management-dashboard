@@ -4,7 +4,7 @@ import User from '../models/User';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 
-async function createAdmin(name, email, password) {
+async function createAdmin(name: string, email: string, password: string) {
   try {
     await connectDB();
 

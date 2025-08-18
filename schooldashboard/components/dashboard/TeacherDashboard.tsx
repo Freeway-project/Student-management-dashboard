@@ -6,11 +6,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Users, BookOpen, FileCheck, Calendar, Eye } from 'lucide-react';
 
+interface Student {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  otherInfo?: {
+    studentId?: string;
+    phone?: string;
+    address?: string;
+    emergencyContact?: string;
+    additionalNotes?: string;
+  };
+}
+
 export default function TeacherDashboard() {
   const { user } = useAuth();
   const [currentView, setCurrentView] = useState('dashboard');
-  const [students, setStudents] = useState([]);
-  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -52,7 +66,7 @@ export default function TeacherDashboard() {
               {students.length === 0 ? (
                 <p className="text-muted-foreground">No students assigned yet.</p>
               ) : (
-                students.map((student: any) => (
+                students.map((student) => (
                   <div key={student._id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
                       <h4 className="font-medium">{student.name}</h4>

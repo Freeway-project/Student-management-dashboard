@@ -1,12 +1,12 @@
-import { dbConnect } from "@/lib/db";
+import connectDB from "@/lib/mongodb";
 import OrgUnit from "@/models/OrgUnit";
 export async function GET() {
-  await dbConnect();
+  await connectDB();
   const roots = await OrgUnit.find({ parentId: null });
   return Response.json(roots);
 }
 export async function POST(req: Request) {
-  await dbConnect();
+  await connectDB();
   const body = await req.json(); // { name, parentId? }
   const parent = body.parentId ? await OrgUnit.findById(body.parentId) : null;
   const node = await OrgUnit.create({

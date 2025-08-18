@@ -2,22 +2,32 @@ import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import jwt from 'jsonwebtoken';
 import { Roles } from '@/models/enums';
 
 export async function POST(req: Request) {
   try {
-    // Check if user is authenticated and is admin
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    // Check if user is authenticated and is admin using our custom auth
+    const token = req.headers.get('cookie')?.split('token=')[1]?.split(';')[0];
+    if (!token) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    await connectDB();
+    let userEmail: string;
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+      await connectDB();
+      const user = await User.findById(decoded.userId);
+      if (!user) {
+        return new NextResponse('Unauthorized', { status: 401 });
+      }
+      userEmail = user.email;
+    } catch (error) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
     
     // Verify the requesting user is an admin
-    const requestingUser = await User.findOne({ email: session.user.email });
+    const requestingUser = await User.findOne({ email: userEmail });
     if (!requestingUser || requestingUser.role !== 'ADMIN') {
       return new NextResponse('Forbidden: Admin access required', { status: 403 });
     }

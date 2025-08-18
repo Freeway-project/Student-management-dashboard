@@ -3,7 +3,7 @@ import User from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Role hierarchy definition - higher roles can see lower roles
-const ROLE_HIERARCHY = {
+const ROLE_HIERARCHY: Record<string, string[]> = {
   'DEAN': ['VICE_DEAN', 'HEAD', 'COLLEGE_QC', 'TEACHER', 'STUDENT'],
   'VICE_DEAN': ['HEAD', 'COLLEGE_QC', 'TEACHER', 'STUDENT'],
   'HEAD': ['COLLEGE_QC', 'TEACHER', 'STUDENT'],
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     }
 
     const requesterRole = requester.role;
-    const allowedRoles = ROLE_HIERARCHY[requesterRole as keyof typeof ROLE_HIERARCHY] || [];
+    const allowedRoles = ROLE_HIERARCHY[requesterRole] || [];
 
     // Build query based on hierarchy permissions
     let query: any = {};
