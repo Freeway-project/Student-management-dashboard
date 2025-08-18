@@ -1,11 +1,40 @@
-// import { db, products } from 'lib/db';
+import connectDB from '@/lib/mongodb';
+import User from '@/models/User';
+import bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  return Response.json({
-    message: 'Uncomment to seed data after DB is set up.'
-  });
+  try {
+    await connectDB();
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: 'admin@school.com' });
+    if (existingUser) {
+      return Response.json({
+        message: 'Test user already exists'
+      });
+    }
+
+    // Create test user
+    const hashedPassword = await bcrypt.hash('password123', 10);
+    
+    await User.create({
+      name: 'Admin User',
+      email: 'admin@school.com',
+      passwordHash: hashedPassword,
+      role: 'ADMIN'
+    });
+
+    return Response.json({
+      message: 'Test user created successfully. Login with admin@school.com / password123'
+    });
+  } catch (error) {
+    console.error('Seed error:', error);
+    return Response.json({
+      error: 'Failed to seed data'
+    }, { status: 500 });
+  }
 
   // await db.insert(products).values([
   //   {
