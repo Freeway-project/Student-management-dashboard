@@ -32,6 +32,7 @@ import { VercelLogo } from '@/components/icons';
 import Providers from './providers';
 import { NavItem } from './nav-item';
 import { SearchInput } from './search';
+import AuthGuard from '@/components/AuthGuard';
 
 export default function DashboardLayout({
   children
@@ -40,21 +41,23 @@ export default function DashboardLayout({
 }) {
   return (
     <Providers>
-      <main className="flex min-h-screen w-full flex-col bg-muted/40">
-        <DesktopNav />
-        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-            <MobileNav />
-            <DashboardBreadcrumb />
-            <SearchInput />
-            <User />
-          </header>
-          <main className="grid flex-1 items-start gap-2 p-4 sm:px-6 sm:py-0 md:gap-4 bg-muted/40">
-            {children}
-          </main>
-        </div>
-        <Analytics />
-      </main>
+      <AuthGuard>
+        <main className="flex min-h-screen w-full flex-col bg-muted/40">
+          <DesktopNav />
+          <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+            <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 justify-between">
+              <MobileNav />
+              <DashboardBreadcrumb />
+
+              <User />
+            </header>
+            <main className="grid flex-1 items-start gap-2 p-4 sm:px-6 sm:py-0 md:gap-4 bg-muted/40">
+              {children}
+            </main>
+          </div>
+          <Analytics />
+        </main>
+      </AuthGuard>
     </Providers>
   );
 }
@@ -155,13 +158,7 @@ function MobileNav() {
             <FileText className="h-5 w-5" />
             Assignments
           </Link>
-          <Link
-            href="#"
-            className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-          >
-            <Calendar className="h-5 w-5" />
-            Calendar
-          </Link>
+       
         </nav>
       </SheetContent>
     </Sheet>
