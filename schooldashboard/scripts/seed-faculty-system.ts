@@ -374,17 +374,43 @@ async function seedFacultySystem() {
   }
 }
 
+// Remove 'status' field from all User documents in MongoDB
+// Usage: npx ts-node scripts/remove-user-status.ts
+
+import mongoose from 'mongoose';
+
+
+
+const MONGO_URI = "mongodb+srv://admin:admin@cluster0.pnf3ajy.mongodb.net/test?retryWrites=true&w=majority";
+
+async function main() {
+  await mongoose.connect(MONGO_URI);
+  const result = await User.updateMany({}, { $unset: { status: "" } });
+  console.log(`Removed 'status' field from ${result.modifiedCount} users.`);
+  await mongoose.disconnect();
+}
+
+main().catch(err => {
+  console.error('Error removing status field:', err);
+  process.exit(1);
+});
+
+
 // Allow running this script directly
 if (require.main === module) {
-  seedFacultySystem()
-    .then(() => {
-      console.log('✅ Seed completed successfully');
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error('❌ Seed failed:', error);
-      process.exit(1);
-    });
+  // seedFacultySystem()
+  //   .then(() => {
+  //     console.log('✅ Seed completed successfully');
+  //     process.exit(0);
+  //   })
+  //   .catch((error) => {
+  //     console.error('❌ Seed failed:', error);
+  //     process.exit(1);
+  //   });
+  main().catch((error) => {
+    console.error('❌ Remove status field failed:', error);
+    process.exit(1);
+  });
 }
 
 export default seedFacultySystem;

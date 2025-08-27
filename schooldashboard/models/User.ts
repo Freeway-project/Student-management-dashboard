@@ -14,7 +14,7 @@ const UserSchema = new Schema({
     required: true 
   },
   
-  // Removed status management
+
   
   // Department association
   departmentId: { type: Types.ObjectId, ref: "Department", required: true },
@@ -45,7 +45,7 @@ const UserSchema = new Schema({
     { role: 1 },
     { departmentId: 1 },
     { supervisorId: 1 },
-    { status: 1 }
+
   ]
 });
 
@@ -74,7 +74,10 @@ UserSchema.methods.canApprove = function(taskCreatorRole: Role): boolean {
     'CHAIRMAN': []
   };
   
-  const canApproveRoles = approvalHierarchy[taskCreatorRole as keyof typeof approvalHierarchy] || [];
+  const canApproveRoles = approvalHierarchy[taskCreatorRole as keyof typeof approvalHierarchy];
+  if (!canApproveRoles) {
+    return false;
+  }
   return canApproveRoles.includes(this.role);
 };
 

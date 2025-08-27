@@ -5,6 +5,7 @@
     "build": "next build",
     "start": "next start",
     "seed:faculty": "npx tsx scripts/seed-faculty-system.ts",
+    "seed:status": "npx tsx scripts/remove-user-status-faculty-style.ts",
     "db:reset": "npx tsx scripts/seed-faculty-system.ts"
   },
   "dependencies": {
