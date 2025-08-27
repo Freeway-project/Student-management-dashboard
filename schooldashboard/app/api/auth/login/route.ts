@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
 import connectDB from '@/lib/mongodb'
 import User from '@/models/User'
+import Department from '@/models/Department'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +17,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const user = await User.findOne({ email })
+    // Find user by email
+    const user = await User.findOne({ email }).populate('departmentId', 'name code')
     
     if (!user) {
       return NextResponse.json(
@@ -26,6 +27,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check password
     const isValidPassword = await bcrypt.compare(password, user.passwordHash)
     
     if (!isValidPassword) {
@@ -35,33 +37,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const token = jwt.sign(
-      { 
-        userId: user._id, 
-        email: user.email, 
-        role: user.role 
-      },
-      process.env.JWT_SECRET || 'fallback-secret',
-      { expiresIn: '24h' }
-    )
+    // Update last login
+    user.lastLoginAt = new Date()
+    await user.save()
 
-    const response = NextResponse.json({
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
+    // Return user data (no JWT, no cookies)
+    const userData = {
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      department: user.departmentId ? {
+        id: user.departmentId._id.toString(),
+        name: user.departmentId.name,
+        code: user.departmentId.code
+      } : null
+    }
+
+    return NextResponse.json({
+      success: true,
+      user: userData
     })
 
-    response.cookies.set('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 86400 // 24 hours
-    })
-
-    return response
   } catch (error) {
     console.error('Login error:', error)
     return NextResponse.json(

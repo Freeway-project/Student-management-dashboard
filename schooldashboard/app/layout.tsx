@@ -2,11 +2,12 @@ import './globals.css';
 
 import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from '@/lib/auth-context';
+import RoleSwapper from '@/components/RoleSwapper';
 
 export const metadata = {
   title: 'School Dashboard',
   description:
-    'Multi-role school management dashboard for students, teachers, and administrators.'
+    'Multi-role school management dashboard for teachers, and administrators.'
 };
 
 export default function RootLayout({
@@ -19,6 +20,7 @@ export default function RootLayout({
       <body className="flex min-h-screen w-full flex-col">
         <AuthProvider>
           {children}
+          <RoleSwapper />
         </AuthProvider>
         <Analytics />
       </body>

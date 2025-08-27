@@ -2,11 +2,12 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GraduationCap, Users, BookOpen, Calendar } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
 
 export default function HomePage() {
   const { user, isLoading } = useAuth();
@@ -87,7 +88,7 @@ export default function HomePage() {
               <Users className="h-12 w-12 text-blue-600 mb-4" />
               <CardTitle>Multi-Role Access</CardTitle>
               <CardDescription>
-                Different dashboards for students, teachers, heads, QC staff, vice deans, and deans.
+                Different dashboards for teachers, heads, QC staff, vice deans, and deans.
               </CardDescription>
             </CardHeader>
           </Card>

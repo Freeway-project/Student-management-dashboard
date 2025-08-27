@@ -4,13 +4,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Role hierarchy definition - higher roles can see lower roles
 const ROLE_HIERARCHY: Record<string, string[]> = {
-  'DEAN': ['VICE_DEAN', 'HEAD', 'COLLEGE_QC', 'TEACHER', 'STUDENT'],
-  'VICE_DEAN': ['HEAD', 'COLLEGE_QC', 'TEACHER', 'STUDENT'],
-  'HEAD': ['COLLEGE_QC', 'TEACHER', 'STUDENT'],
-  'COLLEGE_QC': ['TEACHER', 'STUDENT'],
-  'TEACHER': ['STUDENT'],
-  'STUDENT': [],
-  'ADMIN': ['DEAN', 'VICE_DEAN', 'HEAD', 'COLLEGE_QC', 'TEACHER', 'STUDENT']
+  'PROGRAM_ADMIN': ['COMPANY_ADMIN', 'CHAIRMAN', 'VICE_CHAIRMAN', 'HOD', 'COORDINATOR', 'PROFESSOR', 'STUDENT'],
+  'COMPANY_ADMIN': ['CHAIRMAN', 'VICE_CHAIRMAN', 'HOD', 'COORDINATOR', 'PROFESSOR', 'STUDENT'],
+  'CHAIRMAN': ['VICE_CHAIRMAN', 'HOD', 'COORDINATOR', 'PROFESSOR', 'STUDENT'],
+  'VICE_CHAIRMAN': ['HOD', 'COORDINATOR', 'PROFESSOR', 'STUDENT'],
+  'HOD': ['COORDINATOR', 'PROFESSOR', 'STUDENT'],
+  'COORDINATOR': ['PROFESSOR', 'STUDENT'],
+  'PROFESSOR': ['STUDENT'],
+  'STUDENT': []
 };
 
 // GET - Fetch users based on hierarchy
@@ -54,10 +55,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // For teachers, also filter by parentId if set up
-    if (requesterRole === 'TEACHER' && targetRole === 'STUDENT') {
-      query.parentId = requester._id;
-    }
+    
 
     const users = await User.find(query)
       .select('-passwordHash') // Exclude password

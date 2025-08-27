@@ -1,48 +1,64 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 interface User {
   id: string;
-  email: string;
   name: string;
+  email: string;
   role: string;
+  status?: string;
+  department?: {
+    id: string;
+    name: string;
+    code: string;
+  } | null;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => Promise<void>;
+  login: (email: string, password: string) => Promise<{ success: boolean; user?: User; error?: string }>;
+  logout: () => void;
   isLoading: boolean;
+  setUser: (user: User | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+const AUTH_KEY = 'faculty_user';
 
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUserState] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load user from localStorage on mount
   useEffect(() => {
-    checkAuth();
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(AUTH_KEY);
+      if (stored) {
+        try {
+          const userData = JSON.parse(stored);
+          setUserState(userData);
+        } catch {
+          localStorage.removeItem(AUTH_KEY);
+        }
+      }
+      setIsLoading(false);
+    }
   }, []);
 
-  const checkAuth = async () => {
-    try {
-      const response = await fetch('/api/auth/me');
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData.user);
+  const setUser = (userData: User | null) => {
+    setUserState(userData);
+    if (typeof window !== 'undefined') {
+      if (userData) {
+        localStorage.setItem(AUTH_KEY, JSON.stringify(userData));
+      } else {
+        localStorage.removeItem(AUTH_KEY);
       }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -54,32 +70,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const data = await response.json();
 
-      if (response.ok) {
+      if (response.ok && data.user) {
         setUser(data.user);
-        return { success: true };
+        return { success: true, user: data.user };
       } else {
-        return { success: false, error: data.message || 'Login failed' };
+        return { success: false, error: data.error || 'Login failed' };
       }
     } catch (error) {
       return { success: false, error: 'Network error' };
     }
   };
 
-  const logout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      setUser(null);
-      router.push('/login');
-    } catch (error) {
-      console.error('Logout failed:', error);
-      // Even if API call fails, clear user state and redirect
-      setUser(null);
-      router.push('/login');
+  const logout = () => {
+    setUser(null);
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, setUser }}>
       {children}
     </AuthContext.Provider>
   );

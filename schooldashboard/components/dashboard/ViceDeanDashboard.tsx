@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Building, Users, FileText, TrendingUp } from 'lucide-react';
+import DepartmentForm from './DepartmentForm';
 
 export default function ViceDeanDashboard() {
   return (
@@ -101,13 +102,7 @@ export default function ViceDeanDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Student Satisfaction</p>
-                  <p className="text-xs text-muted-foreground">Latest survey</p>
-                </div>
-                <div className="text-sm font-bold">4.3/5</div>
-              </div>
+              
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">Faculty Retention</p>
@@ -118,6 +113,9 @@ export default function ViceDeanDashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>
+      <div className="mt-8">
+        <DepartmentForm />
       </div>
     </div>
   );

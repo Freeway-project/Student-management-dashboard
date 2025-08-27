@@ -1,14 +1,36 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, FileText, TrendingUp, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Users, FileText, TrendingUp, AlertCircle, Plus } from 'lucide-react';
+import CreateUserForm from './CreateUserForm';
+import DepartmentForm from './DepartmentForm';
 
 export default function HeadDashboard() {
+  const [showCreateUser, setShowCreateUser] = useState(false);
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Head Dashboard</h2>
+        <Button onClick={() => setShowCreateUser(!showCreateUser)}>
+          <Plus className="mr-2 h-4 w-4" />
+          {showCreateUser ? 'Hide Form' : 'Create Student'}
+        </Button>
       </div>
+
+      {/* Create User Form */}
+      {showCreateUser && (
+        <div className="mb-6">
+          <CreateUserForm
+            allowedRoles={['STUDENT']}
+            onUserCreated={() => setShowCreateUser(false)}
+            title="Create New Student"
+            description="Add a new student to your department"
+          />
+        </div>
+      )}
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -101,13 +123,7 @@ export default function HeadDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Student Enrollment</p>
-                  <p className="text-xs text-muted-foreground">Active students</p>
-                </div>
-                <div className="text-sm font-bold">456</div>
-              </div>
+              
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">Course Completion Rate</p>
@@ -118,6 +134,9 @@ export default function HeadDashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>
+      <div className="mt-8">
+        <DepartmentForm />
       </div>
     </div>
   );

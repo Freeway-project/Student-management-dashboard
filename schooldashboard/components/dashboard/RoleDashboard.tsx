@@ -2,12 +2,14 @@
 
 import { useAuth } from '@/lib/auth-context';
 import AdminDashboard from './AdminDashboard';
-import StudentDashboard from './StudentDashboard';
+import ProgramAdminDashboard from './ProgramAdminDashboard';
+
 import TeacherDashboard from './TeacherDashboard';
 import HeadDashboard from './HeadDashboard';
 import QCDashboard from './QCDashboard';
-import ViceDeanDashboard from './ViceDeanDashboard';
-import DeanDashboard from './DeanDashboard';
+
+import ChairmanDashboard from './ChairmanDashboard';
+import ViceChairmanDashboard from './ViceChairmanDashboard';
 
 export default function RoleDashboard() {
   const { user, isLoading } = useAuth();
@@ -35,20 +37,25 @@ export default function RoleDashboard() {
   const userRole = user.role;
 
   switch (userRole) {
+    case 'PROGRAM_ADMIN':
+      return <ProgramAdminDashboard />;
+    case 'COMPANY_ADMIN':
     case 'ADMIN':
       return <AdminDashboard />;
-    case 'STUDENT':
-      return <StudentDashboard />;
-    case 'TEACHER':
-      return <TeacherDashboard />;
+    case 'CHAIRMAN':
+      return <ChairmanDashboard />;
+    case 'VICE_CHAIRMAN':
+      return <ViceChairmanDashboard />;
+    case 'HOD':
     case 'HEAD':
       return <HeadDashboard />;
+    case 'COORDINATOR':
     case 'COLLEGE_QC':
       return <QCDashboard />;
-    case 'VICE_DEAN':
-      return <ViceDeanDashboard />;
-    case 'DEAN':
-      return <DeanDashboard />;
+    case 'PROFESSOR':
+    case 'TEACHER':
+      return <TeacherDashboard />;
+    
     default:
       return (
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">

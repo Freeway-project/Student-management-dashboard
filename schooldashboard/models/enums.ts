@@ -1,18 +1,52 @@
-// src/models/enums.ts
+// Updated role hierarchy for faculty workflow system
 export const Roles = [
-  "STUDENT","TEACHER","HEAD","COLLEGE_QC","VICE_DEAN","DEAN","ADMIN"
+  "PROGRAM_ADMIN",
+
+  "CHAIRMAN",
+  "VICE_CHAIRMAN",
+  "HOD",
+  "COORDINATOR",
+  "PROFESSOR"
 ] as const;
 export type Role = typeof Roles[number];
 
+// Task workflow statuses
 export const TaskStatus = [
-  // mirrors PDF actions/states
-  "ASSIGNED",      // created/assigned
-  "SUBMITTED",     // submit done
-  "PENDING_REVIEW",// waiting for reviewer (Head/QC/etc.)
-  "REVISE",        // sent back (Revise/Redirect)
-  "UPDATED",       // re-submitted after revise
-  "FORWARDED",     // forwarded upward (with optional comment/attachment)
-  "APPROVED",      // final approve
-  "CLOSED"         // archived/closed
+  "DRAFT",          // Task created but not assigned
+  "ASSIGNED",       // Assigned to professor
+  "IN_PROGRESS",    // Professor working on it
+  "SUBMITTED",      // Professor submitted
+  "UNDER_REVIEW",   // Being reviewed by supervisor
+  "REVISION_REQUESTED", // Needs changes
+  "APPROVED",       // Approved at current level
+  "FORWARDED",      // Sent to next level
+  "FINAL_APPROVED", // Fully approved
+  "REJECTED",       // Rejected
+  "ARCHIVED"        // Closed/archived
 ] as const;
 export type TaskStatus = typeof TaskStatus[number];
+
+// Submission types
+export const SubmissionType = [
+  "INITIAL",
+  "REVISION",
+  "FINAL"
+] as const;
+export type SubmissionType = typeof SubmissionType[number];
+
+// Approval actions
+export const ApprovalAction = [
+  "APPROVE",
+  "REJECT", 
+  "REQUEST_REVISION",
+  "FORWARD"
+] as const;
+export type ApprovalAction = typeof ApprovalAction[number];
+
+// User statuses
+export const UserStatus = [
+  "ACTIVE",
+  "INACTIVE", 
+  "SUSPENDED"
+] as const;
+export type UserStatus = typeof UserStatus[number];
