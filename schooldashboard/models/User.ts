@@ -17,7 +17,7 @@ const UserSchema = new Schema({
 
   
   // Department association
-  departmentId: { type: Types.ObjectId, ref: "Department", required: true },
+  departmentId: { type: Types.ObjectId, ref: "Department", required: false },
   
   // Simple hierarchy
   supervisorId: { type: Types.ObjectId, ref: "User", default: null },

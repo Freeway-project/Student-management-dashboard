@@ -8,7 +8,7 @@ import bcrypt from 'bcryptjs';
 // Seed data for the faculty workflow system
 async function seedFacultySystem() {
   console.log('🌱 Starting faculty system seed...');
-  
+
   try {
     await connectDB();
     console.log('✅ Connected to MongoDB');
@@ -24,7 +24,7 @@ async function seedFacultySystem() {
 
     // 1. Create Departments
     console.log('🏢 Creating departments...');
-    
+
     const departments = await Department.insertMany([
       {
         name: 'Computer Science',
@@ -35,7 +35,7 @@ async function seedFacultySystem() {
         establishedDate: new Date('2000-01-01')
       },
       {
-        name: 'Electrical Engineering', 
+        name: 'Electrical Engineering',
         code: 'EE',
         description: 'Electrical and Electronics Engineering Department',
         isActive: true,
@@ -44,7 +44,7 @@ async function seedFacultySystem() {
       },
       {
         name: 'Mechanical Engineering',
-        code: 'ME', 
+        code: 'ME',
         description: 'Mechanical Engineering Department',
         isActive: true,
         email: 'me@university.edu',
@@ -57,9 +57,9 @@ async function seedFacultySystem() {
 
     // 2. Create Users with role hierarchy
     console.log('👥 Creating users...');
-    
+
     const defaultPassword = await bcrypt.hash('faculty123', 10);
-    
+
     // Program Admin (top level)
     const programAdmin = await User.create({
       name: 'Program Administrator',
@@ -73,7 +73,7 @@ async function seedFacultySystem() {
 
     // Company Admin
     const companyAdmin = await User.create({
-      name: 'Company Administrator', 
+      name: 'Company Administrator',
       email: 'company@university.edu',
       passwordHash: defaultPassword,
       role: 'COMPANY_ADMIN',
@@ -92,7 +92,7 @@ async function seedFacultySystem() {
       status: 'ACTIVE',
       departmentId: csDept._id,
       supervisorId: companyAdmin._id,
-            phone: '+1-555-0001',
+      phone: '+1-555-0001',
       bio: 'Chairman with 20+ years of academic leadership experience'
     });
 
@@ -105,20 +105,20 @@ async function seedFacultySystem() {
       status: 'ACTIVE',
       departmentId: csDept._id,
       supervisorId: chairman._id,
-            phone: '+1-555-0002',
+      phone: '+1-555-0002',
       bio: 'Vice Chairman overseeing academic operations'
     });
 
     // HODs for each department
     const hodCS = await User.create({
       name: 'Dr. Alice HOD-CS',
-      email: 'hod.cs@university.edu', 
+      email: 'hod.cs@university.edu',
       passwordHash: defaultPassword,
       role: 'HOD',
       status: 'ACTIVE',
       departmentId: csDept._id,
       supervisorId: viceChairman._id,
-            phone: '+1-555-0003',
+      phone: '+1-555-0003',
       bio: 'Head of Computer Science Department'
     });
 
@@ -126,11 +126,11 @@ async function seedFacultySystem() {
       name: 'Dr. Bob HOD-EE',
       email: 'hod.ee@university.edu',
       passwordHash: defaultPassword,
-      role: 'HOD', 
+      role: 'HOD',
       status: 'ACTIVE',
       departmentId: eeDept._id,
       supervisorId: viceChairman._id,
-            phone: '+1-555-0004'
+      phone: '+1-555-0004'
     });
 
     const hodME = await User.create({
@@ -138,10 +138,10 @@ async function seedFacultySystem() {
       email: 'hod.me@university.edu',
       passwordHash: defaultPassword,
       role: 'HOD',
-      status: 'ACTIVE', 
+      status: 'ACTIVE',
       departmentId: meDept._id,
       supervisorId: viceChairman._id,
-            phone: '+1-555-0005'
+      phone: '+1-555-0005'
     });
 
     // Coordinators
@@ -153,18 +153,18 @@ async function seedFacultySystem() {
       status: 'ACTIVE',
       departmentId: csDept._id,
       supervisorId: hodCS._id,
-            phone: '+1-555-0006'
+      phone: '+1-555-0006'
     });
 
     const coordinatorEE = await User.create({
-      name: 'Dr. Eva Coordinator-EE', 
+      name: 'Dr. Eva Coordinator-EE',
       email: 'coordinator.ee@university.edu',
       passwordHash: defaultPassword,
       role: 'COORDINATOR',
       status: 'ACTIVE',
       departmentId: eeDept._id,
       supervisorId: hodEE._id,
-            phone: '+1-555-0007'
+      phone: '+1-555-0007'
     });
 
     // Professors
@@ -177,7 +177,7 @@ async function seedFacultySystem() {
         status: 'ACTIVE',
         departmentId: csDept._id,
         supervisorId: coordinatorCS._id,
-                phone: '+1-555-0010',
+        phone: '+1-555-0010',
         bio: 'Specializes in Machine Learning and AI'
       },
       {
@@ -188,7 +188,7 @@ async function seedFacultySystem() {
         status: 'ACTIVE',
         departmentId: csDept._id,
         supervisorId: coordinatorCS._id,
-                phone: '+1-555-0011',
+        phone: '+1-555-0011',
         bio: 'Expert in Software Engineering and Databases'
       },
       {
@@ -199,7 +199,7 @@ async function seedFacultySystem() {
         status: 'ACTIVE',
         departmentId: eeDept._id,
         supervisorId: coordinatorEE._id,
-                phone: '+1-555-0012',
+        phone: '+1-555-0012',
         bio: 'Power Systems and Renewable Energy'
       },
       {
@@ -210,11 +210,11 @@ async function seedFacultySystem() {
         status: 'ACTIVE',
         departmentId: eeDept._id,
         supervisorId: coordinatorEE._id,
-                phone: '+1-555-0013'
+        phone: '+1-555-0013'
       }
     ]);
 
-    
+
 
     console.log(`✅ Created ${await User.countDocuments()} users`);
 
@@ -225,7 +225,7 @@ async function seedFacultySystem() {
 
     // 3. Create Sample Tasks
     console.log('📋 Creating sample tasks...');
-    
+
     const tasks = await Task.insertMany([
       {
         title: 'Course Curriculum Review - CS 101',
@@ -304,7 +304,7 @@ async function seedFacultySystem() {
 
     // 4. Create Audit Log entries for the seed operation
     console.log('📝 Creating audit logs...');
-    
+
     await AuditLog.create({
       action: 'SEED_DATABASE',
       entity: 'System',
@@ -331,17 +331,17 @@ async function seedFacultySystem() {
     console.log(`   • Departments: ${await Department.countDocuments()}`);
     console.log(`   • Tasks: ${await Task.countDocuments()}`);
     console.log(`   • Audit Logs: ${await AuditLog.countDocuments()}`);
-    
+
     console.log(`\n🔑 Login Credentials (password: faculty123):`);
     console.log(`   • Program Admin: admin@university.edu`);
-    console.log(`   • Company Admin: company@university.edu`); 
+    console.log(`   • Company Admin: company@university.edu`);
     console.log(`   • Chairman: chairman@university.edu`);
     console.log(`   • Vice Chairman: vice.chairman@university.edu`);
     console.log(`   • HOD CS: hod.cs@university.edu`);
     console.log(`   • Coordinator CS: coordinator.cs@university.edu`);
     console.log(`   • Professor CS1: prof.cs1@university.edu`);
     console.log(`   • Professor EE1: prof.ee1@university.edu`);
-    
+
     console.log(`\n🎯 Next Steps:`);
     console.log(`   1. Test login with different role accounts`);
     console.log(`   2. Create and assign new tasks`);
@@ -370,10 +370,36 @@ async function main() {
   await mongoose.disconnect();
 }
 
-main().catch(err => {
-  console.error('Error removing status field:', err);
-  process.exit(1);
-});
+
+async function createProgramAdmin() {
+  try {
+    await connectDB();
+
+
+
+
+    const viceChairman = await User.create({
+      name: 'Dr. Jane Vice-Chairman',
+      email: 'vice.chairman@university.edu',
+      passwordHash: 'password123',
+      role: 'VICE_CHAIRMAN',
+      status: 'ACTIVE',
+
+      supervisorId: '68ae9e388207ffa0d98bd40c',
+      phone: '+1-555-0002',
+      bio: 'Vice Chairman overseeing academic operations'
+    });
+    console.log('Chairman created:', viceChairman);
+
+
+  } catch (error) {
+    console.error('Error creating Program Admin:', error);
+  }
+}
+// main().catch(err => {
+//   console.error('Error removing status field:', err);
+//   process.exit(1);
+// });
 
 
 // Allow running this script directly
@@ -387,10 +413,7 @@ if (require.main === module) {
   //     console.error('❌ Seed failed:', error);
   //     process.exit(1);
   //   });
-  main().catch((error) => {
-    console.error('❌ Remove status field failed:', error);
-    process.exit(1);
-  });
+  createProgramAdmin();
 }
 
 export default seedFacultySystem;
