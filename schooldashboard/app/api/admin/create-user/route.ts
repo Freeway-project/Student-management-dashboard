@@ -2,34 +2,29 @@ import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { Roles } from '@/models/enums';
 
 export async function POST(req: Request) {
   try {
-    // Check if user is authenticated and is admin using our custom auth
-    const token = req.headers.get('cookie')?.split('token=')[1]?.split(';')[0];
-    if (!token) {
-      return new NextResponse('Unauthorized', { status: 401 });
+    await connectDB();
+
+    // Get current user from header (sent from frontend)
+    const currentUserHeader = req.headers.get('x-current-user');
+    if (!currentUserHeader) {
+      return new NextResponse('Authentication required', { status: 401 });
     }
 
-    let userEmail: string;
+    let currentUser;
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
-      await connectDB();
-      const user = await User.findById(decoded.userId);
-      if (!user) {
-        return new NextResponse('Unauthorized', { status: 401 });
-      }
-      userEmail = user.email;
-    } catch (error) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      currentUser = JSON.parse(currentUserHeader);
+    } catch {
+      return new NextResponse('Invalid user data', { status: 401 });
     }
-    
-    // Verify the requesting user is an admin
-    const requestingUser = await User.findOne({ email: userEmail });
-    if (!requestingUser || requestingUser.role !== 'ADMIN') {
-      return new NextResponse('Forbidden: Admin access required', { status: 403 });
+
+    // Allow PROGRAM_ADMIN, HOD, and PROFESSOR to create users
+    const allowedRoles = ['PROGRAM_ADMIN', 'HOD', 'PROFESSOR'];
+    if (!allowedRoles.includes(currentUser.role)) {
+      return new NextResponse('Forbidden: Admin, HOD, or Professor access required', { status: 403 });
     }
 
     const body = await req.json();
@@ -50,6 +45,12 @@ export async function POST(req: Request) {
       return new NextResponse('User with this email already exists', { status: 400 });
     }
 
+    // Get creator's department to assign to new user
+    const creator = await User.findOne({ email: currentUser.email }).populate('departmentId');
+    if (!creator || !creator.departmentId) {
+      return new NextResponse('Creator department not found. Please ensure you have a department assigned.', { status: 400 });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
@@ -57,6 +58,8 @@ export async function POST(req: Request) {
       email,
       passwordHash: hashedPassword,
       role,
+      departmentId: creator.departmentId, // Assign to creator's department
+      createdBy: creator._id, // Track who created this user
     });
 
     // Return user without password hash

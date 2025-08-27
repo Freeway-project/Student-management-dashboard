@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { RefreshCw, User, Shield, ChevronUp, ChevronDown } from 'lucide-react';
 
 export default function RoleSwapper() {
-  const { user, login } = useAuth();
+  const { user, login, setUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingRole, setLoadingRole] = useState<string>('');
   const [isVisible, setIsVisible] = useState(false);
@@ -43,7 +43,7 @@ export default function RoleSwapper() {
     try {
       const result = await login(email, 'faculty123');
       if (result.success) {
-        // Page will redirect automatically via auth context
+        // User state automatically updated via context
       } else {
         console.error('Login failed:', result.error);
       }

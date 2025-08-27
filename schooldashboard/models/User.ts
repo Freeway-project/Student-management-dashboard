@@ -14,13 +14,7 @@ const UserSchema = new Schema({
     required: true 
   },
   
-  // Status management
-  status: { 
-    type: String, 
-    enum: ["ACTIVE", "INACTIVE", "SUSPENDED"], 
-    default: "ACTIVE" 
-  },
-  
+
   // Department association
   departmentId: { type: Types.ObjectId, ref: "Department", required: true },
   

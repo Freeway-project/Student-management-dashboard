@@ -1,38 +1,54 @@
+import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
-import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
     await connectDB();
-    const body = await req.json();
-    const { name, email, password } = body;
+    
+    const { name, email, password } = await request.json();
 
     if (!name || !email || !password) {
-      return new NextResponse('Missing name, email, or password', { status: 400 });
+      return NextResponse.json(
+        { error: 'Name, email and password are required' },
+        { status: 400 }
+      );
     }
 
-    const exist = await User.findOne({
-      email: email,
-    });
-
-    if (exist) {
-      return new NextResponse('User already exists', { status: 400 });
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'User with this email already exists' },
+        { status: 400 }
+      );
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 12);
 
-    const user = await User.create({
+    // Create new user as STUDENT by default
+    const newUser = new User({
       name,
       email,
-      passwordHash: hashedPassword,
-      role: 'STUDENT', // Signup is only for students
+      passwordHash,
+      role: 'STUDENT', // Default role for self-registration
+      status: 'ACTIVE'
     });
 
-    return NextResponse.json(user);
+    await newUser.save();
+
+    return NextResponse.json({
+      success: true,
+      message: 'User created successfully'
+    });
+
   } catch (error) {
-    console.log(error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    console.error('Signup error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

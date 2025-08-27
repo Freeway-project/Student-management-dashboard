@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, BookOpen, FileCheck, Calendar, Eye } from 'lucide-react';
+import { Users, BookOpen, FileCheck, Calendar, Eye, Plus } from 'lucide-react';
+import CreateUserForm from './CreateUserForm';
 
 interface Student {
   _id: string;
@@ -25,6 +26,7 @@ export default function TeacherDashboard() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [showCreateUser, setShowCreateUser] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -139,11 +141,32 @@ export default function TeacherDashboard() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Teacher Dashboard</h2>
-        <Button onClick={() => setCurrentView('students')} variant="outline">
-          <Users className="h-4 w-4 mr-2" />
-          View My Students
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setShowCreateUser(!showCreateUser)}>
+            <Plus className="h-4 w-4 mr-2" />
+            {showCreateUser ? 'Hide Form' : 'Create Student'}
+          </Button>
+          <Button onClick={() => setCurrentView('students')} variant="outline">
+            <Users className="h-4 w-4 mr-2" />
+            View My Students
+          </Button>
+        </div>
       </div>
+
+      {/* Create User Form */}
+      {showCreateUser && (
+        <div className="mb-6">
+          <CreateUserForm
+            allowedRoles={['STUDENT']}
+            onUserCreated={() => {
+              setShowCreateUser(false);
+              loadStudents(); // Refresh student list
+            }}
+            title="Create New Student"
+            description="Add a new student to your class"
+          />
+        </div>
+      )}
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

@@ -11,7 +11,8 @@ import {
   Search,
   Mail,
   Phone,
-  Crown
+  Crown,
+  RefreshCw
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
@@ -57,6 +58,7 @@ export default function ProgramAdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -85,6 +87,15 @@ export default function ProgramAdminDashboard() {
 
   const fetchHierarchyData = async () => {
     try {
+      setError('');
+      
+      // Get current user from localStorage
+      const currentUser = JSON.parse(localStorage.getItem('faculty_user') || '{}');
+      if (!currentUser.id) {
+        setError('401: Authentication required - Please log in');
+        return;
+      }
+      
       // Build query parameters
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
@@ -95,18 +106,27 @@ export default function ProgramAdminDashboard() {
       const queryString = params.toString();
       const url = `/api/users/all-users${queryString ? `?${queryString}` : ''}`;
       
-      const response = await fetch(url);
+      console.log('🔄 Fetching from:', url);
+      const response = await fetch(url, {
+        headers: {
+          'x-current-user': JSON.stringify(currentUser)
+        }
+      });
+      console.log('📡 Response:', response.status, response.statusText);
       
       if (response.ok) {
         const data = await response.json();
         setUsers(data.users || []);
         setStats(data.stats);
+        setError('');
       } else {
         const errorData = await response.json();
-        console.error('Failed to fetch users:', errorData.error);
+        setError(`${response.status}: ${errorData.error || 'Unknown error'}`);
+        console.error('❌ API Error:', errorData);
       }
     } catch (error) {
-      console.error('Error fetching users:', error);
+      setError(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('❌ Fetch Error:', error);
     } finally {
       setLoading(false);
     }
@@ -118,10 +138,18 @@ export default function ProgramAdminDashboard() {
     setMessage('');
 
     try {
+      // Get current user from localStorage
+      const currentUser = JSON.parse(localStorage.getItem('faculty_user') || '{}');
+      if (!currentUser.id) {
+        setMessage('Error: Authentication required - Please log in');
+        return;
+      }
+
       const response = await fetch('/api/admin/create-user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-current-user': JSON.stringify(currentUser)
         },
         body: JSON.stringify(formData),
       });
@@ -169,7 +197,25 @@ export default function ProgramAdminDashboard() {
     return (
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Loading hierarchy...</div>
+          <div className="text-lg">Loading users...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex flex-col items-center justify-center h-64">
+          <div className="text-lg text-red-600 mb-4">❌ Error Loading Users</div>
+          <div className="text-sm text-gray-500 mb-4">{error}</div>
+          <Button onClick={fetchHierarchyData} variant="outline">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Retry
+          </Button>
+          <div className="mt-4 text-xs text-gray-400">
+            Debug: Visit <a href="/api/debug/current-user" className="text-blue-500 underline" target="_blank">/api/debug/current-user</a> to check your authentication
+          </div>
         </div>
       </div>
     );
@@ -184,10 +230,7 @@ export default function ProgramAdminDashboard() {
             Complete system overview and user hierarchy management
           </p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add User
-        </Button>
+
       </div>
 
       {/* Quick Stats */}

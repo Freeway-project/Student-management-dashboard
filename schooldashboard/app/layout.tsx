@@ -20,7 +20,7 @@ export default function RootLayout({
       <body className="flex min-h-screen w-full flex-col">
         <AuthProvider>
           {children}
-          <RoleSwapper  />
+          <RoleSwapper />
         </AuthProvider>
         <Analytics />
       </body>
