@@ -11,15 +11,15 @@ export default function RoleSwapper() {
   const { user, login, setUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingRole, setLoadingRole] = useState<string>('');
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(true);
 
   // Only show in development or for admin users
-  useEffect(() => {
-    const isDev = process.env.NODE_ENV === 'development';
-    const isAdmin = user?.role === 'PROGRAM_ADMIN' || user?.role === 'COMPANY_ADMIN';
-    setIsVisible(isDev || isAdmin);
-  }, [user]);
+  // useEffect(() => {
+  //   const isDev = process.env.NODE_ENV === 'development';
+  //   const isAdmin = user?.role === 'PROGRAM_ADMIN' || user?.role === 'COMPANY_ADMIN';
+  //   setIsVisible(isDev || isAdmin);
+  // }, [user]);
 
   // Test accounts from seed data
   const testAccounts = [
