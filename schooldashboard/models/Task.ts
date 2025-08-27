@@ -13,9 +13,9 @@ const TaskSchema = new Schema({
   priority: { type: String, enum: ["LOW", "MEDIUM", "HIGH", "URGENT"], default: "MEDIUM" },
   
   // Assignment info
-  assignedTo: { type: Types.ObjectId, ref: "User", required: true }, // Professor
+
   assignedBy: { type: Types.ObjectId, ref: "User", required: true }, // Creator
-  departmentId: { type: Types.ObjectId, ref: "Department", required: true },
+
   
   // Workflow status
   status: { 
@@ -31,21 +31,8 @@ const TaskSchema = new Schema({
   startDate: Date,
   completedAt: Date,
   
-  // Current workflow position
-  currentReviewerIds: [{ type: Types.ObjectId, ref: "User" }], // Who needs to review now
-  reviewerHistory: [{
-    userId: { type: Types.ObjectId, ref: "User" },
-    action: String,
-    timestamp: Date,
-    comments: String
-  }],
-  
-  // Requirements and deliverables
-  requiredDeliverables: [{
-    name: String,
-    description: String,
-    required: { type: Boolean, default: true }
-  }],
+
+
   
   // Attachments and resources
   attachments: [{
@@ -117,27 +104,6 @@ TaskSchema.virtual('timeRemaining').get(function() {
   return due.getTime() - now.getTime(); // milliseconds
 });
 
-// Instance methods
-TaskSchema.methods.getNextApprovalLevel = function() {
-  const pendingApprovals = this.approvalWorkflow.filter(a => a.status === 'PENDING');
-  return pendingApprovals.length > 0 ? pendingApprovals[0] : null;
-};
 
-TaskSchema.methods.canUserView = function(userId: string, userRole: string) {
-  // Task visibility logic based on user role and relationship
-  if (this.assignedTo.equals(userId)) return true;
-  if (this.assignedBy.equals(userId)) return true;
-  if (this.currentReviewerIds.some((id: any) => id.equals(userId))) return true;
-  if (['CHAIRMAN', 'VICE_CHAIRMAN'].includes(userRole)) return true;
-  return false;
-};
-
-TaskSchema.methods.canUserEdit = function(userId: string, userRole: string) {
-  // Edit permissions logic
-  if (this.assignedBy.equals(userId) && ['DRAFT', 'REVISION_REQUESTED'].includes(this.status)) return true;
-  if (this.assignedTo.equals(userId) && ['ASSIGNED', 'IN_PROGRESS', 'REVISION_REQUESTED'].includes(this.status)) return true;
-  if (['CHAIRMAN', 'COMPANY_ADMIN', 'PROGRAM_ADMIN'].includes(userRole)) return true;
-  return false;
-};
 
 export default models.Task || model("Task", TaskSchema);

@@ -63,23 +63,7 @@ UserSchema.pre('save', function(next) {
   next();
 });
 
-// Instance methods
-UserSchema.methods.canApprove = function(taskCreatorRole: Role): boolean {
-  // Define approval hierarchy logic
-  const approvalHierarchy = {
-    'PROFESSOR': ['COORDINATOR', 'HOD', 'VICE_CHAIRMAN', 'CHAIRMAN'],
-    'COORDINATOR': ['HOD', 'VICE_CHAIRMAN', 'CHAIRMAN'],
-    'HOD': ['VICE_CHAIRMAN', 'CHAIRMAN'],
-    'VICE_CHAIRMAN': ['CHAIRMAN'],
-    'CHAIRMAN': []
-  };
-  
-  const canApproveRoles = approvalHierarchy[taskCreatorRole as keyof typeof approvalHierarchy];
-  if (!canApproveRoles) {
-    return false;
-  }
-  return canApproveRoles.includes(this.role);
-};
+
 
 UserSchema.methods.canViewUser = function(targetUser: any): boolean {
   // Visibility rules based on role hierarchy

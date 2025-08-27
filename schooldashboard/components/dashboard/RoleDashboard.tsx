@@ -3,12 +3,11 @@
 import { useAuth } from '@/lib/auth-context';
 import AdminDashboard from './AdminDashboard';
 import ProgramAdminDashboard from './ProgramAdminDashboard';
-import StudentDashboard from './StudentDashboard';
+
 import TeacherDashboard from './TeacherDashboard';
 import HeadDashboard from './HeadDashboard';
 import QCDashboard from './QCDashboard';
-import ViceDeanDashboard from './ViceDeanDashboard';
-import DeanDashboard from './DeanDashboard';
+
 import ChairmanDashboard from './ChairmanDashboard';
 import ViceChairmanDashboard from './ViceChairmanDashboard';
 

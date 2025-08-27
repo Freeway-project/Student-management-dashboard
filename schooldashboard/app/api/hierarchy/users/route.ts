@@ -106,6 +106,4 @@ export async function PUT(req: NextRequest) {
     console.error('Update hierarchy error:', error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
-}onse.json({ error: "Internal Server Error" }, { status: 500 });
-  }
 }

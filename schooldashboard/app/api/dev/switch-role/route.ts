@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
-import AuditLog from '@/models/AuditLog';
+
 
 export async function POST(request: NextRequest) {
   // Only allow in development or for admin users
@@ -48,29 +48,7 @@ export async function POST(request: NextRequest) {
       { expiresIn: '24h' }
     );
 
-    // Log the role switch for audit trail
-    if (currentUserId) {
-      try {
-        await AuditLog.create({
-          action: 'DEV_ROLE_SWITCH',
-          entity: 'User',
-          entityId: targetUser._id,
-          userId: currentUserId,
-          userRole: 'DEV',
-          description: `Development role switch to ${targetUser.role} (${targetUser.email})`,
-          metadata: {
-            targetUserId: targetUser._id,
-            targetRole: targetUser.role,
-            targetEmail: targetUser.email,
-            switchType: 'development_testing'
-          },
-          riskLevel: 'MEDIUM'
-        });
-      } catch (logError) {
-        console.error('Failed to create audit log:', logError);
-        // Don't fail the role switch if logging fails
-      }
-    }
+
 
     // Create response with new user data
     const response = NextResponse.json({
@@ -84,13 +62,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Set the new token as httpOnly cookie
-    response.cookies.set('token', newToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 86400 // 24 hours
-    });
+
 
     return response;
   } catch (error) {
