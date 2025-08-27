@@ -122,13 +122,7 @@ export default function HeadDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Student Enrollment</p>
-                  <p className="text-xs text-muted-foreground">Active students</p>
-                </div>
-                <div className="text-sm font-bold">456</div>
-              </div>
+              
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">Course Completion Rate</p>

@@ -127,7 +127,7 @@ export default function AdminDashboard() {
                     <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Roles.filter(role => role !== 'STUDENT').map((role) => (
+                    {Roles.map((role) => (
                       <SelectItem key={role} value={role}>
                         {role.replace('_', ' ')}
                       </SelectItem>

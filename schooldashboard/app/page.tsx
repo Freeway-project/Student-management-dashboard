@@ -88,7 +88,7 @@ export default function HomePage() {
               <Users className="h-12 w-12 text-blue-600 mb-4" />
               <CardTitle>Multi-Role Access</CardTitle>
               <CardDescription>
-                Different dashboards for students, teachers, heads, QC staff, vice deans, and deans.
+                Different dashboards for teachers, heads, QC staff, vice deans, and deans.
               </CardDescription>
             </CardHeader>
           </Card>

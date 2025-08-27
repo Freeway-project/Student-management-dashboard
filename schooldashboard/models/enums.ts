@@ -1,13 +1,12 @@
 // Updated role hierarchy for faculty workflow system
 export const Roles = [
   "PROGRAM_ADMIN",
-  "COMPANY_ADMIN", 
+
   "CHAIRMAN",
   "VICE_CHAIRMAN",
   "HOD",
   "COORDINATOR",
-  "PROFESSOR",
-  "STUDENT"
+  "PROFESSOR"
 ] as const;
 export type Role = typeof Roles[number];
 

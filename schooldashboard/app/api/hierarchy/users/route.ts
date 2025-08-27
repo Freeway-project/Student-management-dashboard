@@ -55,10 +55,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // For teachers, also filter by parentId if set up
-    if (requesterRole === 'TEACHER' && targetRole === 'STUDENT') {
-      query.parentId = requester._id;
-    }
+    
 
     const users = await User.find(query)
       .select('-passwordHash') // Exclude password
@@ -108,5 +105,7 @@ export async function PUT(req: NextRequest) {
   } catch (error) {
     console.error('Update hierarchy error:', error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}onse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

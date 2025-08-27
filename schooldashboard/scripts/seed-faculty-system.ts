@@ -214,27 +214,7 @@ async function seedFacultySystem() {
       }
     ]);
 
-    // Sample students
-    await User.insertMany([
-      {
-        name: 'Alice Student',
-        email: 'student1@university.edu',
-        passwordHash: defaultPassword,
-        role: 'STUDENT',
-        status: 'ACTIVE',
-        departmentId: csDept._id,
-                metadata: { year: 'Senior', gpa: 3.8 }
-      },
-      {
-        name: 'Bob Student',
-        email: 'student2@university.edu',
-        passwordHash: defaultPassword,
-        role: 'STUDENT',
-        status: 'ACTIVE', 
-        departmentId: eeDept._id,
-                metadata: { year: 'Junior', gpa: 3.6 }
-      }
-    ]);
+    
 
     console.log(`✅ Created ${await User.countDocuments()} users`);
 

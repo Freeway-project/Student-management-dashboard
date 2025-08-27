@@ -76,7 +76,7 @@ export default function CreateUserForm({
   }
 
   const roleDisplayNames: { [key: string]: string } = {
-    'STUDENT': 'Student',
+    
     'PROFESSOR': 'Professor',
     'COORDINATOR': 'Coordinator',
     'HOD': 'Head of Department',

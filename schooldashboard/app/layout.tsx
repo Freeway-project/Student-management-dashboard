@@ -7,7 +7,7 @@ import RoleSwapper from '@/components/RoleSwapper';
 export const metadata = {
   title: 'School Dashboard',
   description:
-    'Multi-role school management dashboard for students, teachers, and administrators.'
+    'Multi-role school management dashboard for teachers, and administrators.'
 };
 
 export default function RootLayout({

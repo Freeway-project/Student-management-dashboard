@@ -133,7 +133,7 @@ function buildHierarchy(users: any[]) {
   });
 
   // Sort roots by role hierarchy
-  const roleOrder = ['PROGRAM_ADMIN', 'COMPANY_ADMIN', 'CHAIRMAN', 'VICE_CHAIRMAN', 'HOD', 'COORDINATOR', 'PROFESSOR', 'STUDENT'];
+  const roleOrder = ['PROGRAM_ADMIN', 'COMPANY_ADMIN', 'CHAIRMAN', 'VICE_CHAIRMAN', 'HOD', 'COORDINATOR', 'PROFESSOR'];
   
   roots.sort((a, b) => {
     const aIndex = roleOrder.indexOf(a.role);

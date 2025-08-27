@@ -315,7 +315,7 @@ export default function ProgramAdminDashboard() {
                   <option value="HOD">HOD</option>
                   <option value="COORDINATOR">Coordinator</option>
                   <option value="PROFESSOR">Professor</option>
-                  <option value="STUDENT">Student</option>
+
                 </select>
                 
                 <select 
@@ -456,7 +456,7 @@ export default function ProgramAdminDashboard() {
                       <option value="HOD">HOD</option>
                       <option value="COORDINATOR">Coordinator</option>
                       <option value="PROFESSOR">Professor</option>
-                      <option value="STUDENT">Student</option>
+    
                     </select>
                   </div>
                   

@@ -1,6 +1,6 @@
 import { Schema, model, models, Types } from "mongoose";
 import { Role, UserStatus } from "./enums";
-
+import Department from '@/models/Department';
 const UserSchema = new Schema({
   // Basic user info
   name: { type: String, required: true },
@@ -10,7 +10,7 @@ const UserSchema = new Schema({
   // Role and hierarchy
   role: { 
     type: String, 
-    enum: ["PROGRAM_ADMIN", "COMPANY_ADMIN", "CHAIRMAN", "VICE_CHAIRMAN", "HOD", "COORDINATOR", "PROFESSOR", "STUDENT"], 
+    enum: ["PROGRAM_ADMIN", "CHAIRMAN", "VICE_CHAIRMAN", "HOD", "COORDINATOR", "PROFESSOR"], 
     required: true 
   },
   

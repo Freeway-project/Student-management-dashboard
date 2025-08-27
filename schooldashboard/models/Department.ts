@@ -6,12 +6,12 @@ const DepartmentSchema = new Schema({
   code: { type: String, required: true, unique: true }, // e.g., "CS", "EE", "ME"
   description: String,
   
-  // Hierarchy - departments can have sub-departments
-  parentDepartmentId: { type: Types.ObjectId, ref: "Department", default: null },
+
   
   // Leadership
   hodId: { type: Types.ObjectId, ref: "User" }, // Head of Department
   coordinatorIds: [{ type: Types.ObjectId, ref: "User" }], // Multiple coordinators possible
+  professorIds: [{ type: Types.ObjectId, ref: "User" }], // Professors in this department
   
   // Status and settings
   isActive: { type: Boolean, default: true },
@@ -26,18 +26,10 @@ const DepartmentSchema = new Schema({
   establishedDate: Date,
   metadata: { type: Schema.Types.Mixed, default: {} },
   
-  // Soft delete
-  deletedAt: { type: Date, default: null },
-  deletedBy: { type: Types.ObjectId, ref: "User" }
+
 }, { 
   timestamps: true,
-  indexes: [
-    { code: 1 },
-    { name: 1 },
-    { parentDepartmentId: 1 },
-    { hodId: 1 },
-    { isActive: 1 }
-  ]
+
 });
 
 // Virtual for getting all sub-departments

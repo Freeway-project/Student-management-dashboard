@@ -28,12 +28,12 @@ export async function POST(request: NextRequest) {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Create new user as STUDENT by default
+    // Create new user as PROFESSOR by default
     const newUser = new User({
       name,
       email,
       passwordHash,
-      role: 'STUDENT', // Default role for self-registration
+      role: 'PROFESSOR', // Default role for self-registration
       status: 'ACTIVE'
     });
 
