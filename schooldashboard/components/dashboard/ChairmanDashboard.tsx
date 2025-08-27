@@ -150,6 +150,28 @@ export default function ChairmanDashboard() {
     }
   };
 
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setUsers(users.filter(user => user.id !== userId));
+        toast.success('User deleted successfully!');
+      } else {
+        const error = await response.text();
+        toast.error(error || 'Failed to delete user');
+      }
+    } catch (error) {
+      toast.error('Error deleting user');
+    }
+  };
+
   useEffect(() => {
     fetchDepartments();
     fetchUsers();
@@ -405,6 +427,9 @@ export default function ChairmanDashboard() {
                           </p>
                         )}
                       </div>
+                      <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
+                        Delete
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

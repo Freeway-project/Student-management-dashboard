@@ -10,6 +10,24 @@ export const Roles = [
 ] as const;
 export type Role = typeof Roles[number];
 
+// Department-level roles (subset of main roles)
+export const DeptRoles = [
+  "HOD",
+  "COORDINATOR", 
+  "PROFESSOR"
+] as const;
+export type DeptRole = typeof DeptRoles[number];
+
+// Assignment statuses
+export const AssignmentStatus = [
+  "NOT_SUBMITTED",
+  "IN_REVIEW",
+  "CHANGES_REQUESTED",
+  "APPROVED",
+  "REJECTED"
+] as const;
+export type AssignmentStatus = typeof AssignmentStatus[number];
+
 // Task workflow statuses
 export const TaskStatus = [
   "DRAFT",          // Task created but not assigned

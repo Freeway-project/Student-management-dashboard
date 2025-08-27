@@ -1,0 +1,163 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/lib/db';
+import Task from '@/models/Task';
+import TaskAssignment from '@/models/TasjAssignment';
+import User from '@/models/User';
+
+export async function POST(request: NextRequest) {
+  try {
+    await connectDB();
+
+    const body = await request.json();
+    const { 
+      title, 
+      description, 
+      instructions, 
+      priority = "MEDIUM",
+      dueAt,
+      requiredDeliverables = [],
+      assignedTo, // Array of user IDs
+      assignedBy,
+      departmentId 
+    } = body;
+
+    // Validate required fields
+    if (!title || !description || !assignedBy || !assignedTo?.length) {
+      return NextResponse.json(
+        { error: 'Missing required fields: title, description, assignedBy, assignedTo' },
+        { status: 400 }
+      );
+    }
+
+    // Verify assigner exists
+    const assigner = await User.findById(assignedBy);
+    if (!assigner) {
+      return NextResponse.json(
+        { error: 'Assigner not found' },
+        { status: 404 }
+      );
+    }
+
+    // Verify assignees exist
+    const assignees = await User.find({ _id: { $in: assignedTo } });
+    if (assignees.length !== assignedTo.length) {
+      return NextResponse.json(
+        { error: 'One or more assignees not found' },
+        { status: 404 }
+      );
+    }
+
+    // Create the task
+    const task = new Task({
+      title,
+      description,
+      instructions,
+      priority,
+      dueAt: dueAt ? new Date(dueAt) : undefined,
+      requiredDeliverables,
+      assignedTo,
+      assignedBy,
+      departmentId: departmentId || null,
+      status: "ASSIGNED"
+    });
+
+    await task.save();
+
+    // Create TaskAssignment records for each assignee
+    const taskAssignments = assignees.map(assignee => ({
+      taskId: task._id,
+      assigneeUserId: assignee._id,
+      assignedByUserId: assignedBy,
+      assigneeRoleAtAssign: assignee.role,
+      reviewerUserId: assignedBy,
+      departmentId: departmentId || assignee.departmentId,
+      status: "NOT_SUBMITTED"
+    }));
+
+    await TaskAssignment.insertMany(taskAssignments);
+
+    return NextResponse.json({
+      success: true,
+      task: {
+        id: task._id,
+        title: task.title,
+        status: task.status,
+        assignedTo: assignees.map(a => ({ id: a._id, name: a.name, role: a.role })),
+        assignedBy: { id: assigner._id, name: assigner.name, role: assigner.role }
+      }
+    });
+
+  } catch (error) {
+    console.error('Task creation error:', error);
+    return NextResponse.json(
+      { error: 'Failed to create task' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    await connectDB();
+
+    const searchParams = request.nextUrl.searchParams;
+    const userId = searchParams.get('userId');
+    const role = searchParams.get('role');
+
+    if (!userId || !role) {
+      return NextResponse.json(
+        { error: 'userId and role are required' },
+        { status: 400 }
+      );
+    }
+
+    let tasks = [];
+
+    // Get tasks based on role hierarchy
+    if (role === 'CHAIRMAN' || role === 'VICE_CHAIRMAN') {
+      // Can see all tasks
+      tasks = await Task.find({})
+        .populate('assignedBy', 'name role')
+        .populate('assignedTo', 'name role')
+        .sort({ createdAt: -1 });
+    } else if (role === 'HOD') {
+      // Can see tasks in their department and tasks they assigned
+      const user = await User.findById(userId);
+      tasks = await Task.find({
+        $or: [
+          { departmentId: user.departmentId },
+          { assignedBy: userId }
+        ]
+      })
+        .populate('assignedBy', 'name role')
+        .populate('assignedTo', 'name role')
+        .sort({ createdAt: -1 });
+    } else if (role === 'COORDINATOR') {
+      // Can see tasks assigned to them, by them, and to professors under them
+      tasks = await Task.find({
+        $or: [
+          { assignedTo: userId },
+          { assignedBy: userId }
+        ]
+      })
+        .populate('assignedBy', 'name role')
+        .populate('assignedTo', 'name role')
+        .sort({ createdAt: -1 });
+    } else if (role === 'PROFESSOR') {
+      // Can only see tasks assigned to them
+      tasks = await Task.find({ assignedTo: userId })
+        .populate('assignedBy', 'name role')
+        .populate('assignedTo', 'name role')
+        .sort({ createdAt: -1 });
+    }
+
+    return NextResponse.json({ tasks });
+
+  } catch (error) {
+    console.error('Task fetch error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch tasks' },
+      { status: 500 }
+    );
+  }
+}
