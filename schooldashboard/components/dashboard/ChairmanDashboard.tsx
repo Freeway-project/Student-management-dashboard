@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Building, Users, AlertCircle, Filter, UserPlus } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Department {
   _id: string;
@@ -54,11 +55,6 @@ export default function ChairmanDashboard() {
   });
   const [creatingUser, setCreatingUser] = useState(false);
 
-  const showNotification = (message: string, type: 'success' | 'error') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 5000);
-  };
-
   const fetchDepartments = async () => {
     try {
       const response = await fetch('/api/departments');
@@ -67,7 +63,7 @@ export default function ChairmanDashboard() {
         setDepartments(data);
       }
     } catch (error) {
-      showNotification('Failed to fetch departments', 'error');
+      toast.error('Failed to fetch departments');
     } finally {
       setLoading(false);
     }
@@ -90,10 +86,10 @@ export default function ChairmanDashboard() {
         const data = await response.json();
         setUsers(data.users);
       } else {
-        showNotification('Failed to fetch users', 'error');
+        toast.error('Failed to fetch users');
       }
     } catch (error) {
-      showNotification('Error fetching users', 'error');
+      toast.error('Error fetching users');
     } finally {
       setUsersLoading(false);
     }
@@ -113,13 +109,13 @@ export default function ChairmanDashboard() {
         const createdDept = await response.json();
         setDepartments([...departments, createdDept]);
         setNewDepartment({ name: '', code: '', description: '' });
-        showNotification(`Department "${createdDept.name}" created successfully!`, 'success');
+        toast.success(`Department "${createdDept.name}" created successfully!`);
       } else {
         const error = await response.json();
-        showNotification(error.error || 'Failed to create department', 'error');
+        toast.error(error.error || 'Failed to create department');
       }
     } catch (error) {
-      showNotification('Error creating department', 'error');
+      toast.error('Error creating department');
     } finally {
       setCreating(false);
     }
@@ -142,13 +138,13 @@ export default function ChairmanDashboard() {
         const createdUser = await response.json();
         setUsers([...users, createdUser]);
         setNewUser({ name: '', email: '', password: '', role: '', departmentId: '' });
-        showNotification(`User "${createdUser.name}" created successfully!`, 'success');
+        toast.success(`User "${createdUser.name}" created successfully!`);
       } else {
         const error = await response.text();
-        showNotification(error || 'Failed to create user', 'error');
+        toast.error(error || 'Failed to create user');
       }
     } catch (error) {
-      showNotification('Error creating user', 'error');
+      toast.error('Error creating user');
     } finally {
       setCreatingUser(false);
     }
