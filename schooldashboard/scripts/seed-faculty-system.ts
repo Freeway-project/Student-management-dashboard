@@ -68,7 +68,6 @@ async function seedFacultySystem() {
       role: 'PROGRAM_ADMIN',
       status: 'ACTIVE',
       departmentId: csDept._id,
-      invitationStatus: 'ACCEPTED',
       metadata: { isSystemAdmin: true }
     });
 
@@ -81,7 +80,7 @@ async function seedFacultySystem() {
       status: 'ACTIVE',
       departmentId: csDept._id,
       supervisorId: programAdmin._id,
-      invitationStatus: 'ACCEPTED'
+      createdBy: programAdmin._id,
     });
 
     // Chairman
@@ -93,8 +92,7 @@ async function seedFacultySystem() {
       status: 'ACTIVE',
       departmentId: csDept._id,
       supervisorId: companyAdmin._id,
-      invitationStatus: 'ACCEPTED',
-      phone: '+1-555-0001',
+            phone: '+1-555-0001',
       bio: 'Chairman with 20+ years of academic leadership experience'
     });
 
@@ -107,8 +105,7 @@ async function seedFacultySystem() {
       status: 'ACTIVE',
       departmentId: csDept._id,
       supervisorId: chairman._id,
-      invitationStatus: 'ACCEPTED',
-      phone: '+1-555-0002',
+            phone: '+1-555-0002',
       bio: 'Vice Chairman overseeing academic operations'
     });
 
@@ -121,8 +118,7 @@ async function seedFacultySystem() {
       status: 'ACTIVE',
       departmentId: csDept._id,
       supervisorId: viceChairman._id,
-      invitationStatus: 'ACCEPTED',
-      phone: '+1-555-0003',
+            phone: '+1-555-0003',
       bio: 'Head of Computer Science Department'
     });
 
@@ -134,8 +130,7 @@ async function seedFacultySystem() {
       status: 'ACTIVE',
       departmentId: eeDept._id,
       supervisorId: viceChairman._id,
-      invitationStatus: 'ACCEPTED',
-      phone: '+1-555-0004'
+            phone: '+1-555-0004'
     });
 
     const hodME = await User.create({
@@ -146,8 +141,7 @@ async function seedFacultySystem() {
       status: 'ACTIVE', 
       departmentId: meDept._id,
       supervisorId: viceChairman._id,
-      invitationStatus: 'ACCEPTED',
-      phone: '+1-555-0005'
+            phone: '+1-555-0005'
     });
 
     // Coordinators
@@ -159,8 +153,7 @@ async function seedFacultySystem() {
       status: 'ACTIVE',
       departmentId: csDept._id,
       supervisorId: hodCS._id,
-      invitationStatus: 'ACCEPTED',
-      phone: '+1-555-0006'
+            phone: '+1-555-0006'
     });
 
     const coordinatorEE = await User.create({
@@ -171,8 +164,7 @@ async function seedFacultySystem() {
       status: 'ACTIVE',
       departmentId: eeDept._id,
       supervisorId: hodEE._id,
-      invitationStatus: 'ACCEPTED',
-      phone: '+1-555-0007'
+            phone: '+1-555-0007'
     });
 
     // Professors
@@ -185,8 +177,7 @@ async function seedFacultySystem() {
         status: 'ACTIVE',
         departmentId: csDept._id,
         supervisorId: coordinatorCS._id,
-        invitationStatus: 'ACCEPTED',
-        phone: '+1-555-0010',
+                phone: '+1-555-0010',
         bio: 'Specializes in Machine Learning and AI'
       },
       {
@@ -197,8 +188,7 @@ async function seedFacultySystem() {
         status: 'ACTIVE',
         departmentId: csDept._id,
         supervisorId: coordinatorCS._id,
-        invitationStatus: 'ACCEPTED',
-        phone: '+1-555-0011',
+                phone: '+1-555-0011',
         bio: 'Expert in Software Engineering and Databases'
       },
       {
@@ -209,8 +199,7 @@ async function seedFacultySystem() {
         status: 'ACTIVE',
         departmentId: eeDept._id,
         supervisorId: coordinatorEE._id,
-        invitationStatus: 'ACCEPTED',
-        phone: '+1-555-0012',
+                phone: '+1-555-0012',
         bio: 'Power Systems and Renewable Energy'
       },
       {
@@ -221,8 +210,7 @@ async function seedFacultySystem() {
         status: 'ACTIVE',
         departmentId: eeDept._id,
         supervisorId: coordinatorEE._id,
-        invitationStatus: 'ACCEPTED',
-        phone: '+1-555-0013'
+                phone: '+1-555-0013'
       }
     ]);
 
@@ -235,8 +223,7 @@ async function seedFacultySystem() {
         role: 'STUDENT',
         status: 'ACTIVE',
         departmentId: csDept._id,
-        invitationStatus: 'ACCEPTED',
-        metadata: { year: 'Senior', gpa: 3.8 }
+                metadata: { year: 'Senior', gpa: 3.8 }
       },
       {
         name: 'Bob Student',
@@ -245,8 +232,7 @@ async function seedFacultySystem() {
         role: 'STUDENT',
         status: 'ACTIVE', 
         departmentId: eeDept._id,
-        invitationStatus: 'ACCEPTED',
-        metadata: { year: 'Junior', gpa: 3.6 }
+                metadata: { year: 'Junior', gpa: 3.6 }
       }
     ]);
 

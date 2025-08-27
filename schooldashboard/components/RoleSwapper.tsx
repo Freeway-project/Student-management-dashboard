@@ -5,13 +5,14 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, User, Shield } from 'lucide-react';
+import { RefreshCw, User, Shield, ChevronUp, ChevronDown } from 'lucide-react';
 
 export default function RoleSwapper() {
   const { user, login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingRole, setLoadingRole] = useState<string>('');
   const [isVisible, setIsVisible] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   // Only show in development or for admin users
   useEffect(() => {
@@ -78,72 +79,102 @@ export default function RoleSwapper() {
   }
 
   return (
-    <Card className="fixed bottom-4 right-4 w-80 z-50 shadow-lg border-orange-200 bg-orange-50">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm text-orange-800">
-          <Shield className="h-4 w-4" />
-          Role Swapper
-          <Badge variant="outline" className="text-xs">
-            DEV
-          </Badge>
+    <Card className={`fixed bottom-4 right-4 z-50 shadow-lg border-orange-200 bg-orange-50 transition-all duration-300 ${isCollapsed ? 'w-64' : 'w-80'}`}>
+      <CardHeader 
+        className="pb-2 cursor-pointer hover:bg-orange-100 transition-colors"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+      >
+        <CardTitle className="flex items-center justify-between text-sm text-orange-800">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Role Swapper
+            <Badge variant="outline" className="text-xs">
+              DEV
+            </Badge>
+          </div>
+          {isCollapsed ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {/* Current User Info */}
-        {user && (
-          <div className="p-2 bg-white rounded border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium">{user.name}</span>
-              </div>
-              <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
-                {user.role}
-              </Badge>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">{user.email}</div>
-          </div>
-        )}
-
-        {/* Quick Login Buttons */}
-        <div className="space-y-2">
-          <div className="text-xs font-medium text-gray-700 mb-2">
-            Quick Login as:
-          </div>
-          
-          <div className="grid grid-cols-1 gap-1 max-h-64 overflow-y-auto">
-            {testAccounts.map((account) => (
-              <Button
-                key={account.email}
-                size="sm"
-                variant="ghost"
-                onClick={() => quickLogin(account.email, account.role)}
-                disabled={isLoading}
-                className="h-8 text-xs justify-between p-2 hover:bg-orange-100"
-              >
+      
+      {!isCollapsed && (
+        <CardContent className="space-y-3">
+          {/* Current User Info */}
+          {user && (
+            <div className="p-2 bg-white rounded border">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Badge variant={getRoleBadgeVariant(account.role)} className="text-xs">
-                    {account.role === 'VICE_CHAIRMAN' ? 'VC' : 
-                     account.role === 'PROGRAM_ADMIN' ? 'PA' :
-                     account.role === 'COMPANY_ADMIN' ? 'CA' :
-                     account.role.slice(0, 4)}
-                  </Badge>
-                  <span>{account.name}</span>
+                  <User className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium">{user.name}</span>
                 </div>
-                {loadingRole === account.role && isLoading ? (
-                  <RefreshCw className="h-3 w-3 animate-spin" />
-                ) : null}
-              </Button>
-            ))}
-          </div>
-        </div>
+                <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
+                  {user.role}
+                </Badge>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">{user.email}</div>
+            </div>
+          )}
 
-        {/* Quick Info */}
-        <div className="text-xs text-orange-600 bg-orange-100 p-2 rounded border border-orange-200">
-          🔐 Password: <strong>faculty123</strong> (all accounts)
-          <br />⚡ Click any role above to login instantly
-        </div>
-      </CardContent>
+          {/* Quick Login Buttons */}
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-gray-700 mb-2">
+              Quick Login as:
+            </div>
+            
+            <div className="grid grid-cols-1 gap-1 max-h-64 overflow-y-auto">
+              {testAccounts.map((account) => (
+                <Button
+                  key={account.email}
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => quickLogin(account.email, account.role)}
+                  disabled={isLoading}
+                  className="h-8 text-xs justify-between p-2 hover:bg-orange-100"
+                >
+                  <div className="flex items-center gap-2">
+                    <Badge variant={getRoleBadgeVariant(account.role)} className="text-xs">
+                      {account.role === 'VICE_CHAIRMAN' ? 'VC' : 
+                       account.role === 'PROGRAM_ADMIN' ? 'PA' :
+                       account.role === 'COMPANY_ADMIN' ? 'CA' :
+                       account.role.slice(0, 4)}
+                    </Badge>
+                    <span>{account.name}</span>
+                  </div>
+                  {loadingRole === account.role && isLoading ? (
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                  ) : null}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick Info */}
+          <div className="text-xs text-orange-600 bg-orange-100 p-2 rounded border border-orange-200">
+            🔐 Password: <strong>faculty123</strong> (all accounts)
+            <br />⚡ Click any role above to login instantly
+          </div>
+        </CardContent>
+      )}
+      
+      {/* Collapsed state - show current user */}
+      {isCollapsed && user && (
+        <CardContent className="py-2">
+          <div className="flex items-center gap-2">
+            <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
+              {user.role === 'VICE_CHAIRMAN' ? 'VC' : 
+               user.role === 'PROGRAM_ADMIN' ? 'PA' :
+               user.role === 'COMPANY_ADMIN' ? 'CA' :
+               user.role.slice(0, 4)}
+            </Badge>
+            <span className="text-sm font-medium text-orange-800 truncate">
+              {user.name}
+            </span>
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 }

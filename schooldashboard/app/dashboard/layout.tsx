@@ -76,24 +76,8 @@ function DesktopNav() {
           <span className="sr-only">School Dashboard</span>
         </Link>
 
-        <NavItem href="/" label="Dashboard">
+        <NavItem href="/dashboard" label="Dashboard">
           <Home className="h-5 w-5" />
-        </NavItem>
-
-        <NavItem href="#" label="Students">
-          <Users className="h-5 w-5" />
-        </NavItem>
-
-        <NavItem href="#" label="Courses">
-          <BookOpen className="h-5 w-5" />
-        </NavItem>
-
-        <NavItem href="#" label="Assignments">
-          <FileText className="h-5 w-5" />
-        </NavItem>
-
-        <NavItem href="#" label="Calendar">
-          <Calendar className="h-5 w-5" />
         </NavItem>
       </nav>
       <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
@@ -133,32 +117,11 @@ function MobileNav() {
             <span className="sr-only">School Dashboard</span>
           </Link>
           <Link
-            href="/"
+            href="/dashboard"
             className="flex items-center gap-4 px-2.5 text-foreground"
           >
             <Home className="h-5 w-5" />
             Dashboard
-          </Link>
-          <Link
-            href="#"
-            className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-          >
-            <Users className="h-5 w-5" />
-            Students
-          </Link>
-          <Link
-            href="#"
-            className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-          >
-            <BookOpen className="h-5 w-5" />
-            Courses
-          </Link>
-          <Link
-            href="#"
-            className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-          >
-            <FileText className="h-5 w-5" />
-            Assignments
           </Link>
        
         </nav>

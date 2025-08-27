@@ -44,19 +44,10 @@ export const ApprovalAction = [
 ] as const;
 export type ApprovalAction = typeof ApprovalAction[number];
 
-// User invitation statuses
-export const InvitationStatus = [
-  "PENDING",
-  "ACCEPTED",
-  "EXPIRED"
-] as const;
-export type InvitationStatus = typeof InvitationStatus[number];
-
 // User statuses
 export const UserStatus = [
   "ACTIVE",
   "INACTIVE", 
-  "SUSPENDED",
-  "PENDING_ACTIVATION"
+  "SUSPENDED"
 ] as const;
 export type UserStatus = typeof UserStatus[number];

@@ -1,11 +1,11 @@
 import { Schema, model, models, Types } from "mongoose";
-import { Role, UserStatus, InvitationStatus } from "./enums";
+import { Role, UserStatus } from "./enums";
 
 const UserSchema = new Schema({
   // Basic user info
   name: { type: String, required: true },
   email: { type: String, unique: true, index: true, required: true },
-  passwordHash: String, // null for users who haven't set password yet
+  passwordHash: { type: String, required: true },
   
   // Role and hierarchy
   role: { 
@@ -17,52 +17,40 @@ const UserSchema = new Schema({
   // Status management
   status: { 
     type: String, 
-    enum: ["ACTIVE", "INACTIVE", "SUSPENDED", "PENDING_ACTIVATION"], 
-    default: "PENDING_ACTIVATION" 
+    enum: ["ACTIVE", "INACTIVE", "SUSPENDED"], 
+    default: "ACTIVE" 
   },
   
   // Department association
   departmentId: { type: Types.ObjectId, ref: "Department", required: true },
   
-  // Hierarchy relationships
+  // Simple hierarchy
   supervisorId: { type: Types.ObjectId, ref: "User", default: null },
-  reportingTo: [{ type: Types.ObjectId, ref: "User" }], // Multiple reporting relationships
   
-  // Invitation management
-  invitationStatus: { 
-    type: String, 
-    enum: ["PENDING", "ACCEPTED", "EXPIRED"], 
-    default: "PENDING" 
-  },
-  invitationToken: String, // For password reset/initial setup
-  invitationExpiresAt: Date,
-  invitedBy: { type: Types.ObjectId, ref: "User" },
-  
-  // Contact and profile info
+  // Contact info (optional)
   phone: String,
-  address: String,
   bio: String,
   
-  // Access control
-  permissions: [String], // Array of permission strings
+  // Login tracking
   lastLoginAt: Date,
   
-  // Additional flexible data
+  // Additional data
   metadata: { type: Schema.Types.Mixed, default: {} },
+  
+  // Admin management
+  createdBy: { type: Types.ObjectId, ref: "User" },
   
   // Soft delete
   deletedAt: { type: Date, default: null },
   deletedBy: { type: Types.ObjectId, ref: "User" }
 }, { 
   timestamps: true,
-  // Add indexes for performance
   indexes: [
     { email: 1 },
     { role: 1 },
     { departmentId: 1 },
     { supervisorId: 1 },
-    { status: 1 },
-    { invitationToken: 1 }
+    { status: 1 }
   ]
 });
 
