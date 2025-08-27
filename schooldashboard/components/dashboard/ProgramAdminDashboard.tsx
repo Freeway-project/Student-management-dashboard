@@ -21,7 +21,7 @@ interface User {
   name: string;
   email: string;
   role: string;
-  status: string;
+  // ...existing code...
   department: {
     id: string;
     name: string;
@@ -61,7 +61,7 @@ export default function ProgramAdminDashboard() {
   const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  // ...existing code...
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [formData, setFormData] = useState({
@@ -83,7 +83,7 @@ export default function ProgramAdminDashboard() {
     }, 300); // Debounce search
     
     return () => clearTimeout(delayedFetch);
-  }, [searchTerm, roleFilter, statusFilter, departmentFilter]);
+  }, [searchTerm, roleFilter, departmentFilter]);
 
   const fetchHierarchyData = async () => {
     try {
@@ -100,7 +100,7 @@ export default function ProgramAdminDashboard() {
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
       if (roleFilter) params.append('role', roleFilter);
-      if (statusFilter) params.append('status', statusFilter);
+  // Removed status filter from API params
       if (departmentFilter) params.append('department', departmentFilter);
       
       const queryString = params.toString();
@@ -320,13 +320,9 @@ export default function ProgramAdminDashboard() {
                 
                 <select 
                   className="p-2 border rounded-md text-sm"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  // Removed status filter select
                 >
-                  <option value="">All Status</option>
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                  <option value="SUSPENDED">Suspended</option>
+                  {/* Removed status options */}
                 </select>
                 
                 <select 
@@ -340,14 +336,14 @@ export default function ProgramAdminDashboard() {
                   <option value="ME">Mechanical Engineering</option>
                 </select>
                 
-                {(searchTerm || roleFilter || statusFilter || departmentFilter) && (
+                {(searchTerm || roleFilter || departmentFilter) && (
                   <Button 
                     variant="outline" 
                     size="sm"
                     onClick={() => {
                       setSearchTerm('');
                       setRoleFilter('');
-                      setStatusFilter('');
+                      // Removed status filter reset
                       setDepartmentFilter('');
                     }}
                   >
@@ -381,9 +377,7 @@ export default function ProgramAdminDashboard() {
                         <Badge variant={getRoleBadgeVariant(user.role)}>
                           {user.role.replace('_', ' ')}
                         </Badge>
-                        <Badge variant={user.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                          {user.status}
-                        </Badge>
+                        {/* Removed user status badge */}
                         {user.department && (
                           <Badge variant="outline">
                             {user.department.code}

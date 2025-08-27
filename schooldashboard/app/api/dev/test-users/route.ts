@@ -14,7 +14,7 @@ export async function GET() {
     
     // Get all users with their departments
     const users = await User.find({
-      status: 'ACTIVE',
+  // Removed status field
       role: { $in: ['PROGRAM_ADMIN', 'COMPANY_ADMIN', 'CHAIRMAN', 'VICE_CHAIRMAN', 'HOD', 'COORDINATOR', 'PROFESSOR'] }
     })
     .populate('departmentId', 'name code')

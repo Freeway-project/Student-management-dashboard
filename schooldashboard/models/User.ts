@@ -14,7 +14,8 @@ const UserSchema = new Schema({
     required: true 
   },
   
-
+  // Removed status management
+  
   // Department association
   departmentId: { type: Types.ObjectId, ref: "Department", required: true },
   
