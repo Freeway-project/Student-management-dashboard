@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Building, Users, FileText, TrendingUp } from 'lucide-react';
+import DepartmentForm from './DepartmentForm';
 
 export default function ViceDeanDashboard() {
   return (
@@ -112,6 +113,9 @@ export default function ViceDeanDashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>
+      <div className="mt-8">
+        <DepartmentForm />
       </div>
     </div>
   );

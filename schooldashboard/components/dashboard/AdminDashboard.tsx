@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Users, UserPlus, Settings, Database } from 'lucide-react';
 import { Roles } from '@/models/enums';
+import DepartmentForm from './DepartmentForm';
 
 export default function AdminDashboard() {
   const [isCreatingUser, setIsCreatingUser] = useState(false);
@@ -74,6 +75,9 @@ export default function AdminDashboard() {
         </Card>
 
   
+      </div>
+      <div className="mt-8">
+        <DepartmentForm />
       </div>
       
       {/* User Creation Form */}

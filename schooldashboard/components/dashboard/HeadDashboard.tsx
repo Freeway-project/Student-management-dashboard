@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Users, FileText, TrendingUp, AlertCircle, Plus } from 'lucide-react';
 import CreateUserForm from './CreateUserForm';
+import DepartmentForm from './DepartmentForm';
 
 export default function HeadDashboard() {
   const [showCreateUser, setShowCreateUser] = useState(false);
@@ -133,6 +134,9 @@ export default function HeadDashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>
+      <div className="mt-8">
+        <DepartmentForm />
       </div>
     </div>
   );

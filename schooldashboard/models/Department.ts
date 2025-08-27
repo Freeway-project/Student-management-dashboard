@@ -17,13 +17,9 @@ const DepartmentSchema = new Schema({
   isActive: { type: Boolean, default: true },
   settings: { type: Schema.Types.Mixed, default: {} },
   
-  // Contact and location info
-  email: String,
-  phone: String,
-  location: String,
+
   
-  // Metadata
-  establishedDate: Date,
+
   metadata: { type: Schema.Types.Mixed, default: {} },
   
 
