@@ -33,6 +33,7 @@ import Providers from './providers';
 import { NavItem } from './nav-item';
 import { SearchInput } from './search';
 import AuthGuard from '@/components/AuthGuard';
+import RoleSwapper from '@/components/RoleSwapper';
 
 export default function DashboardLayout({
   children
@@ -56,6 +57,7 @@ export default function DashboardLayout({
             </main>
           </div>
           <Analytics />
+          <RoleSwapper />
         </main>
       </AuthGuard>
     </Providers>
