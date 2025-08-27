@@ -24,7 +24,7 @@ export default function RoleSwapper() {
   // Test accounts from seed data
   const testAccounts = [
     { email: 'admin@university.edu', role: 'PROGRAM_ADMIN', name: 'Program Admin' },
-    { email: 'company@university.edu', role: 'COMPANY_ADMIN', name: 'Company Admin' },
+
     { email: 'chairman@university.edu', role: 'CHAIRMAN', name: 'Chairman' },
     { email: 'vice.chairman@university.edu', role: 'VICE_CHAIRMAN', name: 'Vice Chairman' },
     { email: 'hod.cs@university.edu', role: 'HOD', name: 'HOD CS' },
@@ -41,7 +41,7 @@ export default function RoleSwapper() {
     setIsLoading(true);
     setLoadingRole(role);
     try {
-      const result = await login(email, 'faculty123');
+      const result = await login(email, 'password123');
       if (result.success) {
         // User state automatically updated via context
       } else {

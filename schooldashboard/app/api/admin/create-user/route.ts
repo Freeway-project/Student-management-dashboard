@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, email, password, role } = body;
+    const { name, email, password, role, departmentId } = body;
 
     if (!name || !email || !password || !role) {
       return new NextResponse('Missing required fields: name, email, password, role', { status: 400 });
@@ -45,10 +45,20 @@ export async function POST(req: Request) {
       return new NextResponse('User with this email already exists', { status: 400 });
     }
 
-    // Get creator's department to assign to new user
-    const creator = await User.findOne({ email: currentUser.email }).populate('departmentId');
-    if (!creator || !creator.departmentId) {
-      return new NextResponse('Creator department not found. Please ensure you have a department assigned.', { status: 400 });
+    // Get creator for tracking purposes
+    const creator = await User.findOne({ email: currentUser.email });
+    if (!creator) {
+      return new NextResponse('Creator not found', { status: 400 });
+    }
+
+    // Use provided departmentId or fallback to creator's department
+    let assignedDepartmentId = departmentId;
+    if (!assignedDepartmentId) {
+      const creatorWithDept = await User.findOne({ email: currentUser.email }).populate('departmentId');
+      if (!creatorWithDept || !creatorWithDept.departmentId) {
+        return new NextResponse('Department ID required or creator department not found', { status: 400 });
+      }
+      assignedDepartmentId = creatorWithDept.departmentId;
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -58,7 +68,7 @@ export async function POST(req: Request) {
       email,
       passwordHash: hashedPassword,
       role,
-      departmentId: creator.departmentId, // Assign to creator's department
+      departmentId: assignedDepartmentId, // Assign to specified or creator's department
       createdBy: creator._id, // Track who created this user
     });
 

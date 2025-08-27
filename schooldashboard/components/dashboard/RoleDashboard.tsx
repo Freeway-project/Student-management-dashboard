@@ -9,6 +9,8 @@ import HeadDashboard from './HeadDashboard';
 import QCDashboard from './QCDashboard';
 import ViceDeanDashboard from './ViceDeanDashboard';
 import DeanDashboard from './DeanDashboard';
+import ChairmanDashboard from './ChairmanDashboard';
+import ViceChairmanDashboard from './ViceChairmanDashboard';
 
 export default function RoleDashboard() {
   const { user, isLoading } = useAuth();
@@ -42,9 +44,9 @@ export default function RoleDashboard() {
     case 'ADMIN':
       return <AdminDashboard />;
     case 'CHAIRMAN':
-      return <DeanDashboard />;
+      return <ChairmanDashboard />;
     case 'VICE_CHAIRMAN':
-      return <ViceDeanDashboard />;
+      return <ViceChairmanDashboard />;
     case 'HOD':
     case 'HEAD':
       return <HeadDashboard />;

@@ -378,14 +378,26 @@ async function createProgramAdmin() {
 
 
 
+ const defaultPassword = await bcrypt.hash('password123', 10);
+
+    // const viceChairman = await User.create({
+    //   name: 'Dr. -Chairman',
+    //   email: 'chairman@university.edu',
+    //   passwordHash: defaultPassword,
+    //   role: 'VICE_CHAIRMAN',
+    //   status: 'ACTIVE',
+    //   supervisorId: '68ae9e388207ffa0d98bd40c',
+    //   phone: '+1-555-0002',
+    //   bio: 'Vice Chairman overseeing academic operations'
+    // });
+
     const viceChairman = await User.create({
       name: 'Dr. Jane Vice-Chairman',
       email: 'vice.chairman@university.edu',
-      passwordHash: 'password123',
+      passwordHash: defaultPassword,
       role: 'VICE_CHAIRMAN',
       status: 'ACTIVE',
-
-      supervisorId: '68ae9e388207ffa0d98bd40c',
+      supervisorId: '68af3179e37f39c5fe31593c',
       phone: '+1-555-0002',
       bio: 'Vice Chairman overseeing academic operations'
     });
@@ -396,6 +408,9 @@ async function createProgramAdmin() {
     console.error('Error creating Program Admin:', error);
   }
 }
+
+
+
 // main().catch(err => {
 //   console.error('Error removing status field:', err);
 //   process.exit(1);
