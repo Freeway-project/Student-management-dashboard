@@ -4,12 +4,10 @@ import Task from '@/models/Task';
 import TaskAssignment from '@/models/TaskAssignment';
 import { ObjectId } from 'mongodb';
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: NextRequest, context: any) {
   try {
     await connectDB();
+      const { params } = context;
     
     const { id: taskId } = params;
     const body = await req.json();
@@ -79,15 +77,10 @@ export async function PATCH(
   }
 }
 
-export async function GET(
-  //@ts-ignore
-  req: NextRequest,
-  context: { params: { id: string } }
-) {
-  const { params } = context;
+export async function GET(req: NextRequest, context: any) {
   try {
     await connectDB();
-    
+    const { params } = context; 
     const { id: taskId } = params;
 
     // Validate task ID

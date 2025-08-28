@@ -107,11 +107,12 @@ const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
                                             type="checkbox"
                                             id={`dept-${dept._id}`}
                                             checked={selectedDepartments.includes(dept._id)}
-                                            onChange={() => setSelectedDepartments((prev) =>
-                                                prev.includes(dept._id)
-                                                    ? prev.filter((id) => id !== dept._id)
-                                                    : [...prev, dept._id]
-                                            )}
+                                            onChange={() => {
+                                                const newSelectedDepartments = selectedDepartments.includes(dept._id)
+                                                    ? selectedDepartments.filter((id) => id !== dept._id)
+                                                    : [...selectedDepartments, dept._id];
+                                                setSelectedDepartments(newSelectedDepartments);
+                                            }}
                                             className="rounded border-gray-300"
                                         />
                                         <label htmlFor={`dept-${dept._id}`} className="text-sm">
@@ -130,7 +131,10 @@ const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
                                                 {dept.name}
                                                 <button
                                                     type="button"
-                                                    onClick={() => setSelectedDepartments((prev) => prev.filter((id) => id !== deptId))}
+                                                    onClick={() => {
+                                                        const newSelectedDepartments = selectedDepartments.filter((id) => id !== deptId);
+                                                        setSelectedDepartments(newSelectedDepartments);
+                                                    }}
                                                     className="ml-1 hover:text-red-500"
                                                 >
                                                     <X className="h-3 w-3" />

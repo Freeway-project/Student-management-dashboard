@@ -4,12 +4,12 @@ import { useState, useEffect } from 'react';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-import { 
-  CheckSquare, 
-  Plus, 
-  Filter, 
-  Calendar, 
-  User, 
+import {
+  CheckSquare,
+  Plus,
+  Filter,
+  Calendar,
+  User,
   Building,
   Clock,
   X
@@ -58,7 +58,7 @@ export default function TaskManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Filter states
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
@@ -79,7 +79,7 @@ export default function TaskManagement() {
         label: '',
         optional: false
       }
-    ] 
+    ]
   });
 
   console.log('🚀 ~ :78 ~ TaskManagement ~ newTask::==', newTask)
@@ -97,7 +97,7 @@ export default function TaskManagement() {
     if (selectedDepartments.length === 0) {
       setFilteredUsers(users);
     } else {
-      const filtered = users.filter(user => 
+      const filtered = users.filter(user =>
         user.department && selectedDepartments.includes(user.department.id)
       );
       setFilteredUsers(filtered);
@@ -150,7 +150,7 @@ export default function TaskManagement() {
   };
 
   const handleDepartmentSelect = (departmentId: string) => {
-    setSelectedDepartments(prev => 
+    setSelectedDepartments(prev =>
       prev.includes(departmentId)
         ? prev.filter(id => id !== departmentId)
         : [...prev, departmentId]
@@ -169,9 +169,9 @@ export default function TaskManagement() {
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
-    
+
     setCreating(true);
-    
+
     try {
       const taskData = {
         title: newTask.title,
@@ -196,18 +196,24 @@ export default function TaskManagement() {
       if (response.ok) {
         const result = await response.json();
         console.log('Task created successfully:', result);
-        
-        // Reset form
+
         setNewTask({
           title: '',
           description: '',
           priority: 'MEDIUM',
           dueDate: '',
           assignedTo: [],
-          departments: []
+          departments: [],
+          requiredDeliverables: [
+            {
+              type: 'PDF',
+              label: '',
+              optional: false
+            }
+          ]
         });
         setSelectedDepartments([]);
-        
+
         // Refresh tasks
         fetchData();
       } else {
@@ -243,7 +249,7 @@ export default function TaskManagement() {
   const filteredTasks = tasks.filter(task => {
     const matchesStatus = !statusFilter || task.status === statusFilter;
     const matchesPriority = !priorityFilter || task.priority === priorityFilter;
-    const matchesSearch = !searchTerm || 
+    const matchesSearch = !searchTerm ||
       task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -279,7 +285,7 @@ export default function TaskManagement() {
 
         <TabsContent value="tasks" className="space-y-4">
           {/* Filters */}
-          <TaskFilters 
+          <TaskFilters
             statusFilter={statusFilter}
             setStatusFilter={setStatusFilter}
             priorityFilter={priorityFilter}
@@ -299,7 +305,7 @@ export default function TaskManagement() {
 
         {currentUser?.role !== 'PROFESSOR' && (
           <TabsContent value="create" className="space-y-4">
-            <CreateTaskForm 
+            <CreateTaskForm
               newTask={newTask}
               setNewTask={setNewTask}
               selectedDepartments={selectedDepartments}

@@ -6,7 +6,7 @@ import connectDB from '@/lib/mongodb';
 
 export async function POST(
   req: NextRequest,
-  context: RouteHandlerContext<{ id: string }>
+  context: any
 ) {
   const { params } = context;
   try {
