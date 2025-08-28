@@ -15,6 +15,7 @@ const DeliverableSchema = new Schema(
     type: { type: String, enum: DeliverableType, required: true }, // PDF|EXCEL|URL
     label: { type: String, required: true },
     optional: { type: Boolean, default: false },
+    fileUrl: { type: String, required: false }, // URL of the uploaded file
   },
 
 );
@@ -38,7 +39,7 @@ const TaskSchema = new Schema(
     // Who assigned this task
     assignedBy: { type: Types.ObjectId, ref: "User", required: true },
 
-    status: { type: String, enum: TaskStatus, default: "DRAFT" },
+    status: { type: String, enum: TaskStatus, default: "ASSIGNED" },
   },
   { timestamps: true }
 );

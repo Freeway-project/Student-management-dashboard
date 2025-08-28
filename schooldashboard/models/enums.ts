@@ -30,17 +30,9 @@ export type AssignmentStatus = typeof AssignmentStatus[number];
 
 // Task workflow statuses
 export const TaskStatus = [
-  "DRAFT",          // Task created but not assigned
-  "ASSIGNED",       // Assigned to professor
-  "IN_PROGRESS",    // Professor working on it
-  "SUBMITTED",      // Professor submitted
-  "UNDER_REVIEW",   // Being reviewed by supervisor
-  "REVISION_REQUESTED", // Needs changes
-  "APPROVED",       // Approved at current level
-  "FORWARDED",      // Sent to next level
-  "FINAL_APPROVED", // Fully approved
-  "REJECTED",       // Rejected
-  "ARCHIVED"        // Closed/archived
+  "ASSIGNED",       // Assigned to someone
+  "IN_PROGRESS",    // Being worked on
+  "SUBMITTED"       // Completed and submitted
 ] as const;
 export type TaskStatus = typeof TaskStatus[number];
 

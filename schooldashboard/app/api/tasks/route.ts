@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db';
-import Task from '@/models/Task';
-import TaskAssignment from '@/models/TasjAssignment';
-import User from '@/models/User';
+import connectDB from '../../../lib/mongodb';
+import Task from '../../../models/Task';
+import TaskAssignment from '../../../models/TaskAssignment';
+import User from '../../../models/User';
+import { ObjectId } from 'mongodb';
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,6 +30,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate assignedBy is a valid ObjectId
+    if (!ObjectId.isValid(assignedBy)) {
+      return NextResponse.json(
+        { error: 'Invalid assigner ID' },
+        { status: 400 }
+      );
+    }
+
     // Verify assigner exists
     const assigner = await User.findById(assignedBy);
     if (!assigner) {
@@ -46,6 +55,16 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // Validate requiredDeliverables
+    if (!Array.isArray(requiredDeliverables)) {
+      return NextResponse.json(
+        { error: 'requiredDeliverables must be an array' },
+        { status: 400 }
+      );
+    }
+
+
 
     // Create the task
     const task = new Task({
