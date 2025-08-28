@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Task from '@/models/Task';
 import Submission from '@/models/Submission';
+import TaskAssignment from '@/models/TaskAssignment';
 import connectDB from '@/lib/mongodb';
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteHandlerContext<{ id: string }>
 ) {
+  const { params } = context;
   try {
     await connectDB();
     
@@ -48,48 +50,30 @@ export async function POST(
         notes: message || undefined,
         status: 'SUBMITTED',
         submittedAt: new Date(),
-        attachments: deliverables
-          .filter((d: any) => d.fileUrl)
-          .map((deliverable: any, index: number) => ({
-            filename: `deliverable-${index}`,
-            originalName: deliverable.label,
-            mimeType: deliverable.type === 'PDF' ? 'application/pdf' : 
-                     deliverable.type === 'EXCEL' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 
-                     'text/plain',
-            driveFileId: deliverable.fileUrl,
-            uploadedAt: new Date()
-          })),
-        previousSubmissionId: existingSubmission?._id,
-        isLatestVersion: true
+        deliverables
       };
 
-      // Mark previous submission as not latest
+      // Mark existing submission as not latest
       if (existingSubmission) {
         existingSubmission.isLatestVersion = false;
         await existingSubmission.save();
       }
 
+      // Save new submission
       const newSubmission = new Submission(submissionData);
       await newSubmission.save();
 
-      // Update TaskAssignment with submission message
-      const userId = req.headers.get('x-user-id');
-      if (message && userId) {
-        await TaskAssignment.updateOne(
-          { taskId, assigneeUserId: userId },
-          { message: message }
-        );
-      }
+      // Update task assignment status
+      await TaskAssignment.updateOne(
+        { taskId, userId: req.headers.get('x-user-id') },
+        { status: 'SUBMITTED' }
+      );
     }
 
-    return NextResponse.json({ 
-      message: 'Task submitted successfully',
-      taskId,
-      status: task.status
-    });
+    return NextResponse.json({ message: 'Submission successful' });
 
   } catch (error) {
-    console.error('Task submission error:', error);
+    console.error('Submission error:', error);
     return NextResponse.json(
       { error: 'Failed to submit task' },
       { status: 500 }

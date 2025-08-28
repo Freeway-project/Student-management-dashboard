@@ -80,9 +80,11 @@ export async function PATCH(
 }
 
 export async function GET(
+  //@ts-ignore
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   try {
     await connectDB();
     
