@@ -30,6 +30,9 @@ const TaskAssignmentSchema = new Schema(
     attempts: { type: Number, default: 0 },
     itemsCount: { type: Number, default: 0 },
 
+    // Simple messaging
+    message: String, // Latest message in the assignment workflow
+
     // Who can review this assignment
     reviewerUserId: { type: Types.ObjectId, ref: "User", required: true }
   },

@@ -164,10 +164,27 @@ export async function GET(request: NextRequest) {
         .sort({ createdAt: -1 });
     } else if (role === 'PROFESSOR') {
       // Can only see tasks assigned to them
-      tasks = await Task.find({ assignedTo: userId })
+      const baseTasks = await Task.find({ assignedTo: userId })
         .populate('assignedBy', 'name role')
         .populate('assignedTo', 'name role')
         .sort({ createdAt: -1 });
+      
+      // Get TaskAssignment messages for each task
+      const tasksWithMessages = await Promise.all(
+        baseTasks.map(async (task) => {
+          const assignment = await TaskAssignment.findOne({
+            taskId: task._id,
+            assigneeUserId: userId
+          });
+          
+          return {
+            ...task.toObject(),
+            submissionMessage: assignment?.message || null
+          };
+        })
+      );
+      
+      tasks = tasksWithMessages;
     }
 
     return NextResponse.json({ tasks });

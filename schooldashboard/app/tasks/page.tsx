@@ -270,9 +270,11 @@ export default function TaskManagement() {
       </div>
 
       <Tabs defaultValue="tasks" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className={`grid w-full ${currentUser?.role === 'PROFESSOR' ? 'grid-cols-1' : 'grid-cols-2'}`}>
           <TabsTrigger value="tasks">All Tasks</TabsTrigger>
-          <TabsTrigger value="create">Create Task</TabsTrigger>
+          {currentUser?.role !== 'PROFESSOR' && (
+            <TabsTrigger value="create">Create Task</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="tasks" className="space-y-4">
@@ -295,20 +297,22 @@ export default function TaskManagement() {
           />
         </TabsContent>
 
-        <TabsContent value="create" className="space-y-4">
-          <CreateTaskForm 
-            newTask={newTask}
-            setNewTask={setNewTask}
-            selectedDepartments={selectedDepartments}
-            setSelectedDepartments={setSelectedDepartments}
-            filteredUsers={filteredUsers}
-            handleUserSelect={handleUserSelect}
-            handleCreateTask={handleCreateTask}
-            creating={creating}
-            departments={departments}
-            users={users}
-          />
-        </TabsContent>
+        {currentUser?.role !== 'PROFESSOR' && (
+          <TabsContent value="create" className="space-y-4">
+            <CreateTaskForm 
+              newTask={newTask}
+              setNewTask={setNewTask}
+              selectedDepartments={selectedDepartments}
+              setSelectedDepartments={setSelectedDepartments}
+              filteredUsers={filteredUsers}
+              handleUserSelect={handleUserSelect}
+              handleCreateTask={handleCreateTask}
+              creating={creating}
+              departments={departments}
+              users={users}
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

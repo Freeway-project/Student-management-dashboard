@@ -16,8 +16,7 @@ const DeliverableSchema = new Schema(
     label: { type: String, required: true },
     optional: { type: Boolean, default: false },
     fileUrl: { type: String, required: false }, // URL of the uploaded file
-  },
-
+  }
 );
 
 const TaskSchema = new Schema(
