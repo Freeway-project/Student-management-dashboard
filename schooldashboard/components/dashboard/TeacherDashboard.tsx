@@ -144,6 +144,13 @@ export default function TeacherDashboard() {
 
       if (response.ok) {
         fetchTasks(); // Refresh tasks
+        // Update the selected task status immediately
+        if (selectedTask && selectedTask._id === taskId) {
+          setSelectedTask({
+            ...selectedTask,
+            status: newStatus
+          });
+        }
       } else {
         const error = await response.json();
         alert(`Error updating status: ${error.message || 'Unknown error'}`);

@@ -8,6 +8,7 @@ interface TaskListProps {
   departments: any[];
   getPriorityColor: (priority: string) => string;
   getStatusColor: (status: string) => string;
+  onTaskClick?: (taskId: string) => void;
 }
 
 interface User {
@@ -16,11 +17,15 @@ interface User {
   role: string;
 }
 
-const TaskList: React.FC<TaskListProps> = ({ tasks, departments, getPriorityColor, getStatusColor }) => {
+const TaskList: React.FC<TaskListProps> = ({ tasks, departments, getPriorityColor, getStatusColor, onTaskClick }) => {
   return (
     <div className="grid gap-4">
       {tasks.map((task) => (
-        <Card key={task._id} className="hover:shadow-md transition-shadow">
+        <Card 
+          key={task._id} 
+          className={`hover:shadow-md transition-shadow ${onTaskClick ? 'cursor-pointer' : ''}`}
+          onClick={() => onTaskClick && onTaskClick(task._id)}
+        >
           <CardHeader>
             <div className="flex items-start justify-between">
               <div className="space-y-2">

@@ -8,6 +8,7 @@ import { Building, Users, FileText, TrendingUp, CheckSquare, Plus } from 'lucide
 import { toast } from 'sonner';
 import TaskFilters from '@/components/tasks/TaskFilters';
 import TaskList from '@/components/tasks/TaskList';
+import TaskDetail from '@/components/tasks/TaskDetail';
 import CreateTaskForm from '@/components/tasks/CreateTaskForm';
 import DepartmentForm from './DepartmentForm';
 import { useAuth } from '@/lib/auth-context';
@@ -62,6 +63,9 @@ export default function ViceDeanDashboard() {
   const [taskStatusFilter, setTaskStatusFilter] = useState('');
   const [taskPriorityFilter, setTaskPriorityFilter] = useState('');
   const [taskSearchTerm, setTaskSearchTerm] = useState('');
+
+  // Task detail view
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   // Task creation states
   const [newTask, setNewTask] = useState({
@@ -374,34 +378,46 @@ export default function ViceDeanDashboard() {
         </TabsContent>
 
         <TabsContent value="all-tasks" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium flex items-center gap-2">
-              <CheckSquare className="h-5 w-5" />
-              All Tasks
-            </h3>
-            <Button onClick={fetchTasks} variant="outline" size="sm">
-              Refresh
-            </Button>
-          </div>
-
-          <TaskFilters
-            statusFilter={taskStatusFilter}
-            setStatusFilter={setTaskStatusFilter}
-            priorityFilter={taskPriorityFilter}
-            setPriorityFilter={setTaskPriorityFilter}
-            searchTerm={taskSearchTerm}
-            setSearchTerm={setTaskSearchTerm}
-          />
-
-          {tasksLoading ? (
-            <div className="text-center py-8">Loading tasks...</div>
-          ) : (
-            <TaskList
-              tasks={filteredTasks}
-              departments={departments}
+          {selectedTaskId ? (
+            <TaskDetail
+              taskId={selectedTaskId}
+              onBack={() => setSelectedTaskId(null)}
               getPriorityColor={getPriorityColor}
               getStatusColor={getStatusColor}
             />
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium flex items-center gap-2">
+                  <CheckSquare className="h-5 w-5" />
+                  All Tasks
+                </h3>
+                <Button onClick={fetchTasks} variant="outline" size="sm">
+                  Refresh
+                </Button>
+              </div>
+
+              <TaskFilters
+                statusFilter={taskStatusFilter}
+                setStatusFilter={setTaskStatusFilter}
+                priorityFilter={taskPriorityFilter}
+                setPriorityFilter={setTaskPriorityFilter}
+                searchTerm={taskSearchTerm}
+                setSearchTerm={setTaskSearchTerm}
+              />
+
+              {tasksLoading ? (
+                <div className="text-center py-8">Loading tasks...</div>
+              ) : (
+                <TaskList
+                  tasks={filteredTasks}
+                  departments={departments}
+                  getPriorityColor={getPriorityColor}
+                  getStatusColor={getStatusColor}
+                  onTaskClick={setSelectedTaskId}
+                />
+              )}
+            </>
           )}
         </TabsContent>
 
