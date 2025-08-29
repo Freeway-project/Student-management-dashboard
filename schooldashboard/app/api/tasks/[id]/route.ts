@@ -81,6 +81,9 @@ export async function GET(req: NextRequest, context: any) {
   try {
     await connectDB();
     const { params } = context; 
+
+    console.log('🚀 ~ :85 ~ GET ~ params::==', params)
+
     const { id: taskId } = params;
 
     // Validate task ID

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,6 @@ interface CreateTaskFormProps {
     handleCreateTask: (e: React.FormEvent) => Promise<void>;
     creating: boolean;
     departments: any[];
-    users: any[];
 }
 
 const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
@@ -27,7 +26,6 @@ const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
     handleCreateTask,
     creating,
     departments,
-    users,
 }) => {
 
 
@@ -241,42 +239,6 @@ const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
                         </select>
                     </div>
 
-                    {/* Deliverable File Upload */}
-                    <div className="space-y-4">
-                        <label className="text-sm font-medium">Upload Deliverable File</label>
-                        <input
-                            type="file"
-                            className="w-full px-3 py-2 border rounded-md"
-                            onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                    const formData = new FormData();
-                                    formData.append('file', file);
-
-                                    try {
-                                        const response = await fetch('/api/upload', {
-                                            method: 'POST',
-                                            body: formData,
-                                        });
-
-                                        if (response.ok) {
-                                            const { fileUrl } = await response.json();
-                                            const updatedDeliverables = [...(newTask.requiredDeliverables || [])];
-                                            if (!updatedDeliverables[0]) {
-                                                updatedDeliverables[0] = {};
-                                            }
-                                            updatedDeliverables[0].fileUrl = fileUrl;
-                                            setNewTask({ ...newTask, requiredDeliverables: updatedDeliverables });
-                                        } else {
-                                            console.error('File upload failed');
-                                        }
-                                    } catch (error) {
-                                        console.error('Error uploading file:', error);
-                                    }
-                                }
-                            }}
-                        />
-                    </div>
 
                     <Button type="submit" disabled={creating} className="w-full">
                         {creating ? 'Creating Task...' : 'Create Task'}

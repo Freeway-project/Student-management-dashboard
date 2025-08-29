@@ -1,6 +1,4 @@
 import { Schema, model, models, Types } from "mongoose";
-import { Role, UserStatus } from "./enums";
-import Department from '@/models/Department';
 const UserSchema = new Schema({
   // Basic user info
   name: { type: String, required: true },
@@ -16,7 +14,7 @@ const UserSchema = new Schema({
   
 
   
-  // Department associationtr
+  // Department association
   departmentId: { type: Types.ObjectId, ref: "Department", required: false },
   
   // Simple hierarchy
@@ -49,11 +47,6 @@ const UserSchema = new Schema({
   ]
 });
 
-// Virtual for full hierarchy path
-UserSchema.virtual('hierarchyPath').get(function() {
-  // Will be populated with actual hierarchy logic
-  return [];
-});
 
 // Pre-save middleware to handle email normalization
 UserSchema.pre('save', function(next) {

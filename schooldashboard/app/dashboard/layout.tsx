@@ -51,14 +51,9 @@ function HeaderNav() {
           <Home className="h-4 w-4" />
           <span className="hidden sm:block">Dashboard</span>
         </Link>
+
         
-        <Link
-          href="/tasks"
-          className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-        >
-          <CheckSquare className="h-4 w-4" />
-          <span className="hidden sm:block">Tasks</span>
-        </Link>
+
       </nav>
     </div>
   );

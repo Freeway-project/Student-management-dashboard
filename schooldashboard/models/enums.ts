@@ -12,6 +12,8 @@ export type Role = typeof Roles[number];
 
 // Department-level roles (subset of main roles)
 export const DeptRoles = [
+  "CHAIRMAN",
+  "VICE_CHAIRMAN",
   "HOD",
   "COORDINATOR", 
   "PROFESSOR"

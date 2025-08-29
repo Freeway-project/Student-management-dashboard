@@ -7,6 +7,8 @@ import ProgramAdminDashboard from './ProgramAdminDashboard';
 import TeacherDashboard from './TeacherDashboard';
 import HeadDashboard from './HeadDashboard';
 import QCDashboard from './QCDashboard';
+import CoordinatorDashboard from './CoordinatorDashboard';
+import HODDashboard from './HODDashboard';
 
 import ChairmanDashboard from './ChairmanDashboard';
 import ViceChairmanDashboard from './ViceChairmanDashboard';
@@ -47,9 +49,11 @@ export default function RoleDashboard() {
     case 'VICE_CHAIRMAN':
       return <ViceChairmanDashboard />;
     case 'HOD':
+      return <HODDashboard />;
     case 'HEAD':
       return <HeadDashboard />;
     case 'COORDINATOR':
+      return <CoordinatorDashboard />;
     case 'COLLEGE_QC':
       return <QCDashboard />;
     case 'PROFESSOR':

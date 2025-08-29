@@ -10,6 +10,7 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
+    
     const { 
       title, 
       description, 
@@ -117,13 +118,19 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('GET /api/tasks called');
+
     await connectDB();
+    console.log('Database connected');
 
     const searchParams = request.nextUrl.searchParams;
     const userId = searchParams.get('userId');
     const role = searchParams.get('role');
 
+    console.log('Query parameters:', { userId, role });
+
     if (!userId || !role) {
+      console.error('Missing userId or role');
       return NextResponse.json(
         { error: 'userId and role are required' },
         { status: 400 }
@@ -132,61 +139,68 @@ export async function GET(request: NextRequest) {
 
     let tasks = [];
 
-    // Get tasks based on role hierarchy
     if (role === 'CHAIRMAN' || role === 'VICE_CHAIRMAN') {
-      // Can see all tasks
+      console.log('Fetching tasks for role:', role);
       tasks = await Task.find({})
         .populate('assignedBy', 'name role')
         .populate('assignedTo', 'name role')
         .sort({ createdAt: -1 });
     } else if (role === 'HOD') {
-      // Can see tasks in their department and tasks they assigned
+      console.log('Fetching tasks for HOD');
       const user = await User.findById(userId);
+
+
       tasks = await Task.find({
         $or: [
-          { departmentId: user.departmentId },
-          { assignedBy: userId }
+          { departmentId: user.departmentId }, // Tasks in the HOD's department
+          { assignedBy: userId }, // Tasks assigned by the HOD
+          { assignedTo: { $in: await User.find({ departmentId: user.departmentId }).distinct('_id') } } // Tasks assigned to users in the department
         ]
       })
         .populate('assignedBy', 'name role')
         .populate('assignedTo', 'name role')
         .sort({ createdAt: -1 });
     } else if (role === 'COORDINATOR') {
-      // Can see tasks assigned to them, by them, and to professors under them
+      console.log('Fetching tasks for COORDINATOR');
+      const user = await User.findById(userId);
+      console.log('User details:', user);
+
       tasks = await Task.find({
         $or: [
-          { assignedTo: userId },
-          { assignedBy: userId }
+          { assignedTo: { $in: [userId] } }, // Tasks assigned to the Coordinator
+          { assignedBy: userId }, // Tasks assigned by the Coordinator
+          { assignedTo: { $in: await User.find({ departmentId: user.departmentId, role: 'PROFESSOR' }).distinct('_id') } } 
         ]
       })
         .populate('assignedBy', 'name role')
         .populate('assignedTo', 'name role')
         .sort({ createdAt: -1 });
+
     } else if (role === 'PROFESSOR') {
-      // Can only see tasks assigned to them
+      console.log('Fetching tasks for PROFESSOR');
       const baseTasks = await Task.find({ assignedTo: userId })
         .populate('assignedBy', 'name role')
         .populate('assignedTo', 'name role')
         .sort({ createdAt: -1 });
-      
-      // Get TaskAssignment messages for each task
+
       const tasksWithMessages = await Promise.all(
         baseTasks.map(async (task) => {
           const assignment = await TaskAssignment.findOne({
             taskId: task._id,
             assigneeUserId: userId
           });
-          
+
           return {
             ...task.toObject(),
             submissionMessage: assignment?.message || null
           };
         })
       );
-      
+
       tasks = tasksWithMessages;
     }
 
+    console.log('Fetched tasks:', tasks);
     return NextResponse.json({ tasks });
 
   } catch (error) {

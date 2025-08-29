@@ -43,11 +43,16 @@ export function User() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>
-          {user ? user.name : 'My Account'}
+          {user ? (
+        <>
+          <div>{user.name}</div>
+          <div className="text-xs text-muted-foreground">{user.email}</div>
+          <div className="text-xs text-muted-foreground capitalize">{user.role}</div>
+        </>
+          ) : (
+        'My Account'
+          )}
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem>Settings</DropdownMenuItem>
-        <DropdownMenuItem>Support</DropdownMenuItem>
         <DropdownMenuSeparator />
         {user ? (
           <DropdownMenuItem onClick={logout}>

@@ -57,8 +57,8 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, departments, getPriorityColo
                   <User className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">Assigned to: </span>
                   <div className="flex gap-1">
-                    {task.assignedTo.map((user: User) => (
-                      <Badge key={user.id} variant="outline">
+                    {task.assignedTo.map((user: User, index: number) => (
+                      <Badge key={user.id || `user-${index}`} variant="outline">
                         {user.name} ({user.role})
                       </Badge>
                     ))}

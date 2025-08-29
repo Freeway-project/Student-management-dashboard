@@ -315,7 +315,6 @@ export default function TaskManagement() {
               handleCreateTask={handleCreateTask}
               creating={creating}
               departments={departments}
-              users={users}
             />
           </TabsContent>
         )}

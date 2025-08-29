@@ -10,7 +10,8 @@ import {
   CardTitle
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileCheck, CheckSquare, Clock, AlertCircle, Upload, File, X } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FileCheck, CheckSquare, Clock, AlertCircle, Upload, File, X, RefreshCw } from 'lucide-react';
 
 interface Deliverable {
   type: 'PDF' | 'EXCEL' | 'URL';
@@ -181,7 +182,7 @@ export default function TeacherDashboard() {
 
       console.log('🚀 ~ :182 ~ handleTaskSubmit ~ submissionData::==', submissionData)
 
-      return
+
       const response = await fetch(`/api/tasks/${taskId}/submit`, {
         method: 'POST',
         headers: {
@@ -226,6 +227,16 @@ export default function TeacherDashboard() {
           <CheckSquare className="h-8 w-8" />
           My Tasks
         </h2>
+        <Button
+          onClick={fetchTasks}
+          variant="outline"
+          size="sm"
+          disabled={loading}
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
       {/* Task Statistics */}
@@ -287,51 +298,184 @@ export default function TeacherDashboard() {
         </Card>
       </div>
 
-      {/* Task List */}
+      {/* Task Tabs */}
       <Card>
         <CardHeader>
-          <CardTitle>All Tasks</CardTitle>
+          <CardTitle>My Tasks</CardTitle>
           <CardDescription>Click on a task to view details and submit</CardDescription>
         </CardHeader>
         <CardContent>
-          {tasks.length === 0 ? (
-            <div className="text-center py-8">
-              <CheckSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No tasks assigned</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {tasks.map((task) => (
-                <div
-                  key={task._id}
-                  className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => setSelectedTask(task)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{task.title}</h3>
-                      <p className="text-muted-foreground text-sm mt-1">
-                        {task.description}
-                      </p>
-                      {task.dueAt && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Due: {new Date(task.dueAt).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-2 items-end">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                        {task.priority}
-                      </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
-                        {task.status.replace('_', ' ')}
-                      </span>
-                    </div>
-                  </div>
+          <Tabs defaultValue="all" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="all">
+                All ({tasks.length})
+              </TabsTrigger>
+              <TabsTrigger value="assigned">
+                Assigned ({tasks.filter(task => task.status === 'ASSIGNED').length})
+              </TabsTrigger>
+              <TabsTrigger value="in_progress">
+                In Progress ({tasks.filter(task => task.status === 'IN_PROGRESS').length})
+              </TabsTrigger>
+              <TabsTrigger value="submitted">
+                Submitted ({tasks.filter(task => task.status === 'SUBMITTED').length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="all">
+              {tasks.length === 0 ? (
+                <div className="text-center py-8">
+                  <CheckSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No tasks assigned</p>
                 </div>
-              ))}
-            </div>
-          )}
+              ) : (
+                <div className="space-y-4">
+                  {tasks.map((task) => (
+                    <div
+                      key={task._id}
+                      className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => setSelectedTask(task)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg">{task.title}</h3>
+                          <p className="text-muted-foreground text-sm mt-1">
+                            {task.description}
+                          </p>
+                          {task.dueAt && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Due: {new Date(task.dueAt).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2 items-end">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                            {task.priority}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
+                            {task.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="assigned">
+              {tasks.filter(task => task.status === 'ASSIGNED').length === 0 ? (
+                <div className="text-center py-8">
+                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No assigned tasks</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {tasks.filter(task => task.status === 'ASSIGNED').map((task) => (
+                    <div
+                      key={task._id}
+                      className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => setSelectedTask(task)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg">{task.title}</h3>
+                          <p className="text-muted-foreground text-sm mt-1">
+                            {task.description}
+                          </p>
+                          {task.dueAt && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Due: {new Date(task.dueAt).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2 items-end">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                            {task.priority}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="in_progress">
+              {tasks.filter(task => task.status === 'IN_PROGRESS').length === 0 ? (
+                <div className="text-center py-8">
+                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No tasks in progress</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {tasks.filter(task => task.status === 'IN_PROGRESS').map((task) => (
+                    <div
+                      key={task._id}
+                      className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => setSelectedTask(task)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg">{task.title}</h3>
+                          <p className="text-muted-foreground text-sm mt-1">
+                            {task.description}
+                          </p>
+                          {task.dueAt && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Due: {new Date(task.dueAt).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2 items-end">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                            {task.priority}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="submitted">
+              {tasks.filter(task => task.status === 'SUBMITTED').length === 0 ? (
+                <div className="text-center py-8">
+                  <FileCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No submitted tasks</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {tasks.filter(task => task.status === 'SUBMITTED').map((task) => (
+                    <div
+                      key={task._id}
+                      className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => setSelectedTask(task)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg">{task.title}</h3>
+                          <p className="text-muted-foreground text-sm mt-1">
+                            {task.description}
+                          </p>
+                          {task.dueAt && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Due: {new Date(task.dueAt).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2 items-end">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                            {task.priority}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
