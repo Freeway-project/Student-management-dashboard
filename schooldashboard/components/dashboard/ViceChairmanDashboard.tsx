@@ -556,7 +556,7 @@ export default function ViceChairmanDashboard() {
                 <div className="text-center py-8">Loading departments...</div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
-                  {departments.map((dept) => {
+                  {Array.isArray(departments) && departments.map((dept) => {
                     const deptUsers = getDepartmentUsers(dept._id);
                     return (
                       <Card key={dept._id} 

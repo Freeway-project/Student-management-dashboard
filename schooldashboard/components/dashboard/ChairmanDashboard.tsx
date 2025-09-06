@@ -466,7 +466,7 @@ export default function ChairmanDashboard() {
   };
 
   const getDepartmentDetails = (departmentId: string) => {
-    const dept = departments.find(d => d._id === departmentId);
+    const dept = Array.isArray(departments) ? departments.find(d => d._id === departmentId) : null;
     if (!dept) return null;
     
     const deptUsers = getDepartmentUsers(departmentId);
@@ -536,7 +536,7 @@ export default function ChairmanDashboard() {
     const userWithRoles = user as any;
     if (userWithRoles.departmentRoles) {
       userWithRoles.departmentRoles.forEach((deptRole: any) => {
-        const dept = departments.find(d => d._id === deptRole.departmentId);
+        const dept = Array.isArray(departments) ? departments.find(d => d._id === deptRole.departmentId) : null;
         if (dept && !userDepartments.some(ud => ud.id === dept._id)) {
           userDepartments.push({
             id: dept._id,
@@ -639,7 +639,7 @@ export default function ChairmanDashboard() {
                 <Building className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{departments.length}</div>
+                <div className="text-2xl font-bold">{Array.isArray(departments) ? departments.length : 0}</div>
                 <p className="text-xs text-muted-foreground">Active departments</p>
               </CardContent>
             </Card>
@@ -855,7 +855,7 @@ export default function ChairmanDashboard() {
                 <div className="text-center py-8">Loading departments...</div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
-                  {departments.map((dept) => {
+                  {Array.isArray(departments) && departments.map((dept) => {
                     const deptUsers = getDepartmentUsers(dept._id);
                     const deptTasks = getDepartmentTasks(dept._id);
                     return (
@@ -894,7 +894,7 @@ export default function ChairmanDashboard() {
                         </CardContent>
                       </Card>
                     );
-                  })}
+                  }) || <div className="text-center py-8">No departments available.</div>}
                 </div>
               )}
             </>
@@ -1199,7 +1199,7 @@ export default function ChairmanDashboard() {
                 className="px-3 py-2 border rounded-md"
               >
                 <option value="">All Departments</option>
-                {departments.map((dept) => (
+                {Array.isArray(departments) && departments.map((dept) => (
                   <option key={dept._id} value={dept._id}>
                     {dept.name} ({dept.code})
                   </option>
@@ -1274,7 +1274,7 @@ export default function ChairmanDashboard() {
                           <div className="text-sm space-y-1">
                             <span className="font-medium text-green-600">Additional Assignments:</span>
                             {(user as any).departmentRoles.map((deptRole: any, index: number) => {
-                              const dept = departments.find(d => d._id === deptRole.departmentId);
+                              const dept = Array.isArray(departments) ? departments.find(d => d._id === deptRole.departmentId) : null;
                               return dept ? (
                                 <div key={index} className="text-xs text-muted-foreground ml-2">
                                   • {dept.name} ({dept.code}) - {deptRole.roles.join(', ')}
@@ -1398,7 +1398,7 @@ export default function ChairmanDashboard() {
                     required
                   >
                     <option value="">Select Department</option>
-                    {departments.map((dept) => (
+                    {Array.isArray(departments) && departments.map((dept) => (
                       <option key={dept._id} value={dept._id}>
                         {dept.name} ({dept.code})
                       </option>
@@ -1545,7 +1545,7 @@ export default function ChairmanDashboard() {
                     required
                   >
                     <option value="">Select Department</option>
-                    {departments.map((dept) => (
+                    {Array.isArray(departments) && departments.map((dept) => (
                       <option key={dept._id} value={dept._id}>
                         {dept.name} ({dept.code})
                       </option>
@@ -1587,7 +1587,7 @@ export default function ChairmanDashboard() {
                             className="w-full mt-1 px-3 py-2 border rounded-md"
                           >
                             <option value="">Select Department</option>
-                            {departments.map((dept) => (
+                            {Array.isArray(departments) && departments.map((dept) => (
                               <option key={dept._id} value={dept._id}>
                                 {dept.name} ({dept.code})
                               </option>
