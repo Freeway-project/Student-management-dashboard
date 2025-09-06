@@ -11,7 +11,6 @@ import CoordinatorDashboard from './CoordinatorDashboard';
 import HODDashboard from './HODDashboard';
 
 import ChairmanDashboard from './ChairmanDashboard';
-import ViceChairmanDashboard from './ViceChairmanDashboard';
 
 export default function RoleDashboard() {
   const { user, isLoading } = useAuth();
@@ -45,9 +44,8 @@ export default function RoleDashboard() {
     case 'ADMIN':
       return <AdminDashboard />;
     case 'CHAIRMAN':
-      return <ChairmanDashboard />;
     case 'VICE_CHAIRMAN':
-      return <ViceChairmanDashboard />;
+      return <ChairmanDashboard />;
     case 'HOD':
       return <HODDashboard />;
     case 'HEAD':

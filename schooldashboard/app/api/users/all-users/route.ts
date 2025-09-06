@@ -19,9 +19,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid user data' }, { status: 401 });
     }
 
-    // Simple role check - only Program Admin can see all users
-    if (currentUser.role !== 'PROGRAM_ADMIN') {
-      return NextResponse.json({ error: 'Program Admin access required' }, { status: 403 });
+    // Role check - Program Admin, Chairman, and Vice Chairman can see all users
+    const allowedRoles = ['PROGRAM_ADMIN', 'CHAIRMAN', 'VICE_CHAIRMAN'];
+    if (!allowedRoles.includes(currentUser.role)) {
+      return NextResponse.json({ error: 'Insufficient permissions. Chairman, Vice Chairman, or Program Admin access required' }, { status: 403 });
     }
 
     // Get query parameters for filtering

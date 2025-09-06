@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,10 @@ import { Building, Users, AlertCircle, FileText, TrendingUp, Filter, UserPlus, U
 import { toast } from 'sonner';
 import StatsOverview from './shared/StatsOverview';
 import TasksManagement from './shared/TasksManagement';
+import TaskFilters from '@/components/tasks/TaskFilters';
+import TaskList from '@/components/tasks/TaskList';
+import TaskDetail from '@/components/tasks/TaskDetail';
+import CreateTaskForm from '@/components/tasks/CreateTaskForm';
 import { useAuth } from '@/lib/auth-context';
 
 interface Department {
@@ -55,7 +58,6 @@ interface Task {
 
 export default function ViceChairmanDashboard() {
   const { user: currentUser } = useAuth();
-  const router = useRouter();
 
   
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -70,6 +72,13 @@ export default function ViceChairmanDashboard() {
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [userDetailContext, setUserDetailContext] = useState<'users' | 'department' | null>(null);
+
+  // Task filter states
+  const [taskStatusFilter, setTaskStatusFilter] = useState('');
+  const [taskPriorityFilter, setTaskPriorityFilter] = useState('');
+  const [taskSearchTerm, setTaskSearchTerm] = useState('');
 
   const [newDepartment, setNewDepartment] = useState({
     name: '',
@@ -113,10 +122,15 @@ export default function ViceChairmanDashboard() {
   };
 
   const fetchUsers = async () => {
+    setUsersLoading(true);
     try {
-      const response = await fetch('/api/users/all-users', {
+      const params = new URLSearchParams();
+      if (roleFilter) params.append('role', roleFilter);
+      if (searchTerm) params.append('search', searchTerm);
+      
+      const response = await fetch(`/api/users/all-users?${params}`, {
         headers: {
-          'x-current-user': JSON.stringify({ role: 'PROGRAM_ADMIN', email: 'admin@example.com' })
+          'x-current-user': JSON.stringify({ role: 'VICE_CHAIRMAN', email: 'vicechairman@example.com' })
         }
       });
       
@@ -129,18 +143,15 @@ export default function ViceChairmanDashboard() {
     } catch (error) {
       toast.error('Error fetching users');
     } finally {
-      setLoading(false);
+      setUsersLoading(false);
     }
   };
 
   const fetchTasks = async () => {
     setTasksLoading(true);
     try {
-      const response = await fetch('/api/tasks', {
-        headers: {
-          'x-current-user': JSON.stringify({ role: 'PROGRAM_ADMIN', email: 'admin@example.com' })
-        }
-      });
+      const currentUser = { role: 'VICE_CHAIRMAN', email: 'vicechairman@example.com' };
+      const response = await fetch(`/api/tasks?userId=${currentUser.email}&role=${currentUser.role}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -185,20 +196,29 @@ export default function ViceChairmanDashboard() {
     return users.filter(user => user.department && user.department.id === departmentId);
   };
 
+  const getDepartmentTasks = (departmentId: string) => {
+    return tasks.filter(task => task.departmentId === departmentId);
+  };
+
   const getDepartmentDetails = (departmentId: string) => {
-    const dept = departments.find(d => d._id === departmentId);
+    const dept = Array.isArray(departments) ? departments.find(d => d._id === departmentId) : null;
     if (!dept) return null;
     
     const deptUsers = getDepartmentUsers(departmentId);
+    const deptTasks = getDepartmentTasks(departmentId);
     
     return {
       ...dept,
       users: deptUsers,
+      tasks: deptTasks,
       stats: {
         totalUsers: deptUsers.length,
+        totalTasks: deptTasks.length,
         hods: deptUsers.filter(u => u.role === 'HOD').length,
         coordinators: deptUsers.filter(u => u.role === 'COORDINATOR').length,
         professors: deptUsers.filter(u => u.role === 'PROFESSOR').length,
+        activeTasks: deptTasks.filter(t => t.status !== 'SUBMITTED').length,
+        completedTasks: deptTasks.filter(t => t.status === 'SUBMITTED').length
       }
     };
   };
@@ -206,6 +226,15 @@ export default function ViceChairmanDashboard() {
   const getUserDetails = (userId: string) => {
     const user = users.find(u => u.id === userId);
     if (!user) return null;
+
+    // Get tasks assigned to this user (check both legacy and new assignment formats)
+    const userTasks = tasks.filter(task => {
+      // Check legacy assignedTo field
+      const legacyAssigned = task.assignedTo?.some(assignee => assignee.id === userId);
+      // Check new assignments array
+      const newAssigned = task.assignments?.some(assignment => assignment.userId === userId);
+      return legacyAssigned || newAssigned;
+    });
 
     // Get user's departments (both primary and additional)
     const userDepartments: any[] = [];
@@ -223,7 +252,7 @@ export default function ViceChairmanDashboard() {
     const userWithRoles = user as any;
     if (userWithRoles.departmentRoles) {
       userWithRoles.departmentRoles.forEach((deptRole: any) => {
-        const dept = departments.find(d => d._id === deptRole.departmentId);
+        const dept = Array.isArray(departments) ? departments.find(d => d._id === deptRole.departmentId) : null;
         if (dept && !userDepartments.some(ud => ud.id === dept._id)) {
           userDepartments.push({
             id: dept._id,
@@ -236,13 +265,66 @@ export default function ViceChairmanDashboard() {
       });
     }
 
+    // GROUP TASKS BY DEPARTMENT
+    const tasksByDepartment = userDepartments.map(dept => ({
+      ...dept,
+      tasks: userTasks.filter(task =>
+        // Match tasks assigned to user in this specific department
+        task.assignments?.some(assignment =>
+          assignment.userId === userId &&
+          assignment.departmentId === dept.id
+        ) ||
+        // Fallback: legacy assignedTo + department match
+        (task.assignedTo?.some(assignee => assignee.id === userId) &&
+         task.departmentId === dept.id)
+      ),
+      taskStats: {
+        total: 0, // Will be calculated below
+        active: 0,
+        completed: 0
+      }
+    }));
+
+    // Calculate task stats for each department
+    tasksByDepartment.forEach(dept => {
+      dept.taskStats.total = dept.tasks.length;
+      dept.taskStats.active = dept.tasks.filter((t: Task) => t.status !== 'SUBMITTED').length;
+      dept.taskStats.completed = dept.tasks.filter((t: Task) => t.status === 'SUBMITTED').length;
+    });
+
     return {
       ...user,
+      tasks: userTasks,
       departments: userDepartments,
+      tasksByDepartment,
       stats: {
+        totalTasks: userTasks.length,
+        activeTasks: userTasks.filter(t => t.status !== 'SUBMITTED').length,
+        completedTasks: userTasks.filter(t => t.status === 'SUBMITTED').length,
+        urgentTasks: userTasks.filter(t => t.priority === 'URGENT').length,
         totalDepartments: userDepartments.length
       }
     };
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'URGENT': return 'bg-red-100 text-red-800';
+      case 'HIGH': return 'bg-orange-100 text-orange-800';
+      case 'MEDIUM': return 'bg-yellow-100 text-yellow-800';
+      case 'LOW': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'SUBMITTED': return 'bg-green-100 text-green-800';
+      case 'COMPLETED': return 'bg-green-100 text-green-800';
+      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800';
+      case 'ASSIGNED': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
   const addDepartmentRole = () => {
@@ -381,11 +463,24 @@ export default function ViceChairmanDashboard() {
   };
 
   useEffect(() => {
-    setLoading(true);
     fetchDepartments();
     fetchUsers();
     fetchTasks();
   }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [roleFilter, searchTerm]);
+
+  const filteredTasks = tasks.filter(task => {
+    const matchesStatus = !taskStatusFilter || task.status === taskStatusFilter;
+    const matchesPriority = !taskPriorityFilter || task.priority === taskPriorityFilter;
+    const matchesSearch = !taskSearchTerm ||
+      task.title.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
+      task.description.toLowerCase().includes(taskSearchTerm.toLowerCase());
+
+    return matchesStatus && matchesPriority && matchesSearch;
+  });
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -430,7 +525,10 @@ export default function ViceChairmanDashboard() {
             <>
               {/* User Detail View from Department */}
               <div className="flex items-center justify-between">
-                <Button variant="ghost" onClick={() => setSelectedUserId(null)} className="text-blue-600">
+                <Button variant="ghost" onClick={() => {
+                  setSelectedUserId(null);
+                  setUserDetailContext(null);
+                }} className="text-blue-600">
                   ← Back to Department Users
                 </Button>
                 <Button onClick={() => {fetchUsers(); fetchTasks();}} variant="outline" size="sm">
@@ -456,14 +554,22 @@ export default function ViceChairmanDashboard() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-blue-600">{userDetails.stats.totalTasks}</div>
+                            <div className="text-sm text-muted-foreground">Total Tasks</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-orange-600">{userDetails.stats.activeTasks}</div>
+                            <div className="text-sm text-muted-foreground">Active Tasks</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-green-600">{userDetails.stats.completedTasks}</div>
+                            <div className="text-sm text-muted-foreground">Completed Tasks</div>
+                          </div>
                           <div className="text-center">
                             <div className="text-2xl font-bold text-purple-600">{userDetails.stats.totalDepartments}</div>
                             <div className="text-sm text-muted-foreground">Departments</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-blue-600">{userDetails.departments.filter((d: any) => d.isPrimary).length}</div>
-                            <div className="text-sm text-muted-foreground">Primary Roles</div>
                           </div>
                         </div>
                       </CardContent>
@@ -474,6 +580,7 @@ export default function ViceChairmanDashboard() {
                       <TabsList>
                         <TabsTrigger value="overview">Overview</TabsTrigger>
                         <TabsTrigger value="departments">Departments</TabsTrigger>
+                        <TabsTrigger value="tasks">Tasks</TabsTrigger>
                       </TabsList>
 
                       <TabsContent value="overview" className="space-y-4">
@@ -497,20 +604,24 @@ export default function ViceChairmanDashboard() {
                           
                           <Card>
                             <CardHeader>
-                              <CardTitle>Department Summary</CardTitle>
+                              <CardTitle>Task Summary</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
                               <div className="flex justify-between">
-                                <span>Total Departments:</span>
-                                <span className="font-medium">{userDetails.stats.totalDepartments}</span>
+                                <span>Total Tasks:</span>
+                                <span className="font-medium">{userDetails.stats.totalTasks}</span>
                               </div>
                               <div className="flex justify-between">
-                                <span>Primary Roles:</span>
-                                <span className="font-medium text-blue-600">{userDetails.departments.filter((d: any) => d.isPrimary).length}</span>
+                                <span>Active Tasks:</span>
+                                <span className="font-medium text-orange-600">{userDetails.stats.activeTasks}</span>
                               </div>
                               <div className="flex justify-between">
-                                <span>Additional Roles:</span>
-                                <span className="font-medium text-green-600">{userDetails.departments.filter((d: any) => !d.isPrimary).length}</span>
+                                <span>Completed Tasks:</span>
+                                <span className="font-medium text-green-600">{userDetails.stats.completedTasks}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Urgent Tasks:</span>
+                                <span className="font-medium text-red-600">{userDetails.stats.urgentTasks}</span>
                               </div>
                             </CardContent>
                           </Card>
@@ -519,7 +630,7 @@ export default function ViceChairmanDashboard() {
 
                       <TabsContent value="departments" className="space-y-4">
                         <div className="grid gap-4">
-                          {userDetails.departments.map((dept: any) => (
+                          {userDetails.tasksByDepartment.map((dept: any) => (
                             <Card key={dept.id}>
                               <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
@@ -533,10 +644,72 @@ export default function ViceChairmanDashboard() {
                               <CardContent>
                                 <div className="space-y-2">
                                   <div><strong>Roles:</strong> {dept.roles.join(', ')}</div>
+                                  <div>
+                                    <strong>Department Tasks:</strong> {dept.tasks.length}
+                                    {dept.tasks.length > 0 && (
+                                      <div className="mt-2 space-y-1">
+                                        {dept.tasks.slice(0, 3).map((task: any) => (
+                                          <div key={task._id} className="text-sm text-muted-foreground">
+                                            • {task.title} ({task.status})
+                                          </div>
+                                        ))}
+                                        {dept.tasks.length > 3 && (
+                                          <div className="text-sm text-muted-foreground">
+                                            ... and {dept.tasks.length - 3} more
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </CardContent>
                             </Card>
                           ))}
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="tasks" className="space-y-4">
+                        <div className="grid gap-4">
+                          {userDetails.tasks.length === 0 ? (
+                            <Card>
+                              <CardContent className="pt-6 text-center">
+                                <p className="text-muted-foreground">No tasks assigned to this user</p>
+                              </CardContent>
+                            </Card>
+                          ) : (
+                            userDetails.tasks.map((task: any) => (
+                              <Card key={task._id}>
+                                <CardContent className="pt-4">
+                                  <div className="flex justify-between items-start">
+                                    <div className="space-y-2">
+                                      <h4 className="font-semibold">{task.title}</h4>
+                                      <p className="text-sm text-muted-foreground">{task.description}</p>
+                                      <div className="flex items-center gap-2">
+                                        <span className={`px-2 py-1 text-xs rounded ${getPriorityColor(task.priority)}`}>
+                                          {task.priority}
+                                        </span>
+                                        <span className={`px-2 py-1 text-xs rounded ${getStatusColor(task.status)}`}>
+                                          {task.status}
+                                        </span>
+                                      </div>
+                                      {task.dueAt && (
+                                        <p className="text-xs text-muted-foreground">
+                                          Due: {new Date(task.dueAt).toLocaleDateString()}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => setSelectedTaskId(task._id)}
+                                    >
+                                      View Details
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))
+                          )}
                         </div>
                       </TabsContent>
                     </Tabs>
@@ -759,10 +932,13 @@ export default function ViceChairmanDashboard() {
             <>
               {/* User Detail View */}
               <div className="flex items-center justify-between">
-                <Button variant="ghost" onClick={() => setSelectedUserId(null)} className="text-blue-600">
+                <Button variant="ghost" onClick={() => {
+                  setSelectedUserId(null);
+                  setUserDetailContext(null);
+                }} className="text-blue-600">
                   ← Back to All Users
                 </Button>
-                <Button onClick={() => fetchUsers()} variant="outline" size="sm">
+                <Button onClick={() => {fetchUsers(); fetchTasks();}} variant="outline" size="sm">
                   Refresh
                 </Button>
               </div>
@@ -785,14 +961,22 @@ export default function ViceChairmanDashboard() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-blue-600">{userDetails.stats.totalTasks}</div>
+                            <div className="text-sm text-muted-foreground">Total Tasks</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-orange-600">{userDetails.stats.activeTasks}</div>
+                            <div className="text-sm text-muted-foreground">Active Tasks</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-green-600">{userDetails.stats.completedTasks}</div>
+                            <div className="text-sm text-muted-foreground">Completed Tasks</div>
+                          </div>
                           <div className="text-center">
                             <div className="text-2xl font-bold text-purple-600">{userDetails.stats.totalDepartments}</div>
                             <div className="text-sm text-muted-foreground">Departments</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-blue-600">{userDetails.departments.filter((d: any) => d.isPrimary).length}</div>
-                            <div className="text-sm text-muted-foreground">Primary Roles</div>
                           </div>
                         </div>
                       </CardContent>
@@ -803,6 +987,7 @@ export default function ViceChairmanDashboard() {
                       <TabsList>
                         <TabsTrigger value="overview">Overview</TabsTrigger>
                         <TabsTrigger value="departments">Departments</TabsTrigger>
+                        <TabsTrigger value="tasks">Tasks</TabsTrigger>
                       </TabsList>
 
                       <TabsContent value="overview" className="space-y-4">
@@ -826,20 +1011,24 @@ export default function ViceChairmanDashboard() {
                           
                           <Card>
                             <CardHeader>
-                              <CardTitle>Department Summary</CardTitle>
+                              <CardTitle>Task Summary</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
                               <div className="flex justify-between">
-                                <span>Total Departments:</span>
-                                <span className="font-medium">{userDetails.stats.totalDepartments}</span>
+                                <span>Total Tasks:</span>
+                                <span className="font-medium">{userDetails.stats.totalTasks}</span>
                               </div>
                               <div className="flex justify-between">
-                                <span>Primary Roles:</span>
-                                <span className="font-medium text-blue-600">{userDetails.departments.filter((d: any) => d.isPrimary).length}</span>
+                                <span>Active Tasks:</span>
+                                <span className="font-medium text-orange-600">{userDetails.stats.activeTasks}</span>
                               </div>
                               <div className="flex justify-between">
-                                <span>Additional Roles:</span>
-                                <span className="font-medium text-green-600">{userDetails.departments.filter((d: any) => !d.isPrimary).length}</span>
+                                <span>Completed Tasks:</span>
+                                <span className="font-medium text-green-600">{userDetails.stats.completedTasks}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Urgent Tasks:</span>
+                                <span className="font-medium text-red-600">{userDetails.stats.urgentTasks}</span>
                               </div>
                             </CardContent>
                           </Card>
@@ -848,7 +1037,7 @@ export default function ViceChairmanDashboard() {
 
                       <TabsContent value="departments" className="space-y-4">
                         <div className="grid gap-4">
-                          {userDetails.departments.map((dept: any) => (
+                          {userDetails.tasksByDepartment.map((dept: any) => (
                             <Card key={dept.id}>
                               <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
@@ -862,11 +1051,72 @@ export default function ViceChairmanDashboard() {
                               <CardContent>
                                 <div className="space-y-2">
                                   <div><strong>Roles:</strong> {dept.roles.join(', ')}</div>
-                                  <div><strong>Status:</strong> {dept.isPrimary ? 'Primary Department' : 'Additional Assignment'}</div>
+                                  <div>
+                                    <strong>Department Tasks:</strong> {dept.tasks.length}
+                                    {dept.tasks.length > 0 && (
+                                      <div className="mt-2 space-y-1">
+                                        {dept.tasks.slice(0, 3).map((task: any) => (
+                                          <div key={task._id} className="text-sm text-muted-foreground">
+                                            • {task.title} ({task.status})
+                                          </div>
+                                        ))}
+                                        {dept.tasks.length > 3 && (
+                                          <div className="text-sm text-muted-foreground">
+                                            ... and {dept.tasks.length - 3} more
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </CardContent>
                             </Card>
                           ))}
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="tasks" className="space-y-4">
+                        <div className="grid gap-4">
+                          {userDetails.tasks.length === 0 ? (
+                            <Card>
+                              <CardContent className="pt-6 text-center">
+                                <p className="text-muted-foreground">No tasks assigned to this user</p>
+                              </CardContent>
+                            </Card>
+                          ) : (
+                            userDetails.tasks.map((task: any) => (
+                              <Card key={task._id}>
+                                <CardContent className="pt-4">
+                                  <div className="flex justify-between items-start">
+                                    <div className="space-y-2">
+                                      <h4 className="font-semibold">{task.title}</h4>
+                                      <p className="text-sm text-muted-foreground">{task.description}</p>
+                                      <div className="flex items-center gap-2">
+                                        <span className={`px-2 py-1 text-xs rounded ${getPriorityColor(task.priority)}`}>
+                                          {task.priority}
+                                        </span>
+                                        <span className={`px-2 py-1 text-xs rounded ${getStatusColor(task.status)}`}>
+                                          {task.status}
+                                        </span>
+                                      </div>
+                                      {task.dueAt && (
+                                        <p className="text-xs text-muted-foreground">
+                                          Due: {new Date(task.dueAt).toLocaleDateString()}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => setSelectedTaskId(task._id)}
+                                    >
+                                      View Details
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))
+                          )}
                         </div>
                       </TabsContent>
                     </Tabs>
@@ -924,7 +1174,10 @@ export default function ViceChairmanDashboard() {
                 <Card 
                   key={user.id}
                   className="cursor-pointer hover:bg-gray-50 transition-colors"
-                  onClick={() => setSelectedUserId(user.id)}
+                  onClick={() => {
+                    setSelectedUserId(user.id);
+                    setUserDetailContext('users');
+                  }}
                 >
                   <CardContent className="pt-4">
                     <div className="flex justify-between items-start">

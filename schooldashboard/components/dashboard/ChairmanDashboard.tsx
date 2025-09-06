@@ -630,6 +630,9 @@ export default function ChairmanDashboard() {
           <TabsTrigger value="create-user">Create User</TabsTrigger>
           <TabsTrigger value="all-tasks">All Tasks</TabsTrigger>
           <TabsTrigger value="create-task">Create Task</TabsTrigger>
+          {currentUser?.role === 'VICE_CHAIRMAN' && (
+            <TabsTrigger value="my-tasks">My Tasks</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -1639,6 +1642,41 @@ export default function ChairmanDashboard() {
             departments={departments}
           />
         </TabsContent>
+
+        {/* My Tasks Tab - Only for Vice Chairman */}
+        {currentUser?.role === 'VICE_CHAIRMAN' && (
+          <TabsContent value="my-tasks" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium flex items-center gap-2">
+                <CheckSquare className="h-5 w-5" />
+                My Assigned Tasks
+              </h3>
+              <Button onClick={fetchTasks} variant="outline" size="sm">
+                <Filter className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
+
+            <TasksManagement
+              tasks={tasks.filter(task => 
+                task.assignedTo?.some(assignee => assignee.userId === currentUser?.id)
+              )}
+              setSelectedTaskId={setSelectedTaskId}
+              selectedTaskId={selectedTaskId}
+              taskStatusFilter={taskStatusFilter}
+              setTaskStatusFilter={setTaskStatusFilter}
+              taskPriorityFilter={taskPriorityFilter}
+              setTaskPriorityFilter={setTaskPriorityFilter}
+              taskSearchTerm={taskSearchTerm}
+              setTaskSearchTerm={setTaskSearchTerm}
+              handleTaskUpdate={fetchTasks}
+              showUserColumn={false}
+              currentUser={currentUser}
+              enableTaskSubmission={true}
+              loading={tasksLoading}
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Edit User Modal */}
