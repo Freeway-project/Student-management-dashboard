@@ -2,8 +2,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "next build", 
     "start": "next start",
+    "seed": "npx tsx scripts/seed.ts",
+    "seed:simple": "curl http://localhost:3000/api/seed",
     "seed:faculty": "npx tsx scripts/seed-faculty-system.ts",
     "seed:status": "npx tsx scripts/remove-user-status-faculty-style.ts",
     "db:reset": "npx tsx scripts/seed-faculty-system.ts"

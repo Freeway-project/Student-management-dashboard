@@ -1,5 +1,6 @@
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
+import Department from '@/models/Department';
 import bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
@@ -8,26 +9,81 @@ export async function GET() {
   try {
     await connectDB();
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email: 'admin@school.com' });
+    // Check if users already exist
+    const existingUser = await User.findOne({ email: 'chair@gmail.com' });
     if (existingUser) {
       return Response.json({
-        message: 'Test user already exists'
+        message: 'Seed data already exists'
       });
     }
 
-    // Create test user
-    const hashedPassword = await bcrypt.hash('password123', 10);
-    
-    await User.create({
-      name: 'Admin User',
-      email: 'admin@school.com',
-      passwordHash: hashedPassword,
-      role: 'ADMIN'
+    // Create departments
+    const departments = [
+      { name: 'Computer Science', code: 'CS' },
+      { name: 'Mathematics', code: 'MATH' },
+      { name: 'Business Administration', code: 'BCA' },
+      { name: 'Technology', code: 'BTECH' }
+    ];
+
+    const createdDepts = await Department.insertMany(departments);
+    const deptMap: Record<string, any> = {};
+    createdDepts.forEach(dept => {
+      deptMap[dept.code] = dept._id;
     });
 
+    // Create users with simple credentials
+    const hashedPassword = await bcrypt.hash('000000', 10);
+
+    const users = [
+      {
+        name: 'Chairman',
+        email: 'chair@gmail.com',
+        passwordHash: hashedPassword,
+        role: 'CHAIRMAN'
+      },
+      {
+        name: 'CS HOD',
+        email: 'cshod@gmail.com',
+        passwordHash: hashedPassword,
+        role: 'HOD',
+        departmentId: deptMap.CS,
+        departmentRoles: [
+          { departmentId: deptMap.CS, roles: ['HOD', 'PROFESSOR'] }
+        ]
+      },
+      {
+        name: 'Multi Dept User',
+        email: 'multi@gmail.com',
+        passwordHash: hashedPassword,
+        role: 'HOD',
+        departmentId: deptMap.BCA,
+        departmentRoles: [
+          { departmentId: deptMap.BCA, roles: ['HOD', 'PROFESSOR'] },
+          { departmentId: deptMap.BTECH, roles: ['PROFESSOR'] }
+        ]
+      },
+      {
+        name: 'CS Professor',
+        email: 'csprof@gmail.com',
+        passwordHash: hashedPassword,
+        role: 'PROFESSOR',
+        departmentId: deptMap.CS,
+        departmentRoles: [
+          { departmentId: deptMap.CS, roles: ['PROFESSOR'] }
+        ]
+      }
+    ];
+
+    await User.insertMany(users);
+
     return Response.json({
-      message: 'Test user created successfully. Login with admin@school.com / password123'
+      message: 'Seed data created successfully',
+      users: [
+        'chair@gmail.com (CHAIRMAN) - password: 000000',
+        'cshod@gmail.com (CS HOD) - password: 000000', 
+        'multi@gmail.com (Multi-dept HOD) - password: 000000',
+        'csprof@gmail.com (CS Professor) - password: 000000'
+      ]
     });
   } catch (error) {
     console.error('Seed error:', error);
@@ -35,107 +91,4 @@ export async function GET() {
       error: 'Failed to seed data'
     }, { status: 500 });
   }
-
-  // await db.insert(products).values([
-  //   {
-  //     id: 1,
-  //     imageUrl:
-  //       'https://uwja77bygk2kgfqe.public.blob.vercel-storage.com/smartphone-gaPvyZW6aww0IhD3dOpaU6gBGILtcJ.webp',
-  //     name: 'Smartphone X Pro',
-  //     status: 'active',
-  //     price: '999.00',
-  //     stock: 150,
-  //     availableAt: new Date()
-  //   },
-  //   {
-  //     id: 2,
-  //     imageUrl:
-  //       'https://uwja77bygk2kgfqe.public.blob.vercel-storage.com/earbuds-3rew4JGdIK81KNlR8Edr8NBBhFTOtX.webp',
-  //     name: 'Wireless Earbuds Ultra',
-  //     status: 'active',
-  //     price: '199.00',
-  //     stock: 300,
-  //     availableAt: new Date()
-  //   },
-  //   {
-  //     id: 3,
-  //     imageUrl:
-  //       'https://uwja77bygk2kgfqe.public.blob.vercel-storage.com/home-iTeNnmKSMnrykOS9IYyJvnLFgap7Vw.webp',
-  //     name: 'Smart Home Hub',
-  //     status: 'active',
-  //     price: '149.00',
-  //     stock: 200,
-  //     availableAt: new Date()
-  //   },
-  //   {
-  //     id: 4,
-  //     imageUrl:
-  //       'https://uwja77bygk2kgfqe.public.blob.vercel-storage.com/tv-H4l26crxtm9EQHLWc0ddrsXZ0V0Ofw.webp',
-  //     name: '4K Ultra HD Smart TV',
-  //     status: 'active',
-  //     price: '799.00',
-  //     stock: 50,
-  //     availableAt: new Date()
-  //   },
-  //   {
-  //     id: 5,
-  //     imageUrl:
-  //       'https://uwja77bygk2kgfqe.public.blob.vercel-storage.com/laptop-9bgUhjY491hkxiMDeSgqb9R5I3lHNL.webp',
-  //     name: 'Gaming Laptop Pro',
-  //     status: 'active',
-  //     price: '1299.00',
-  //     stock: 75,
-  //     availableAt: new Date()
-  //   },
-  //   {
-  //     id: 6,
-  //     imageUrl:
-  //       'https://uwja77bygk2kgfqe.public.blob.vercel-storage.com/headset-lYnRnpjDbZkB78lS7nnqEJFYFAUDg6.webp',
-  //     name: 'VR Headset Plus',
-  //     status: 'active',
-  //     price: '349.00',
-  //     stock: 120,
-  //     availableAt: new Date()
-  //   },
-  //   {
-  //     id: 7,
-  //     imageUrl:
-  //       'https://uwja77bygk2kgfqe.public.blob.vercel-storage.com/watch-S2VeARK6sEM9QFg4yNQNjHFaHc3sXv.webp',
-  //     name: 'Smartwatch Elite',
-  //     status: 'active',
-  //     price: '249.00',
-  //     stock: 250,
-  //     availableAt: new Date()
-  //   },
-  //   {
-  //     id: 8,
-  //     imageUrl:
-  //       'https://uwja77bygk2kgfqe.public.blob.vercel-storage.com/speaker-4Zk0Ctx5AvxnwNNTFWVK4Gtpru4YEf.webp',
-  //     name: 'Bluetooth Speaker Max',
-  //     status: 'active',
-  //     price: '99.00',
-  //     stock: 400,
-  //     availableAt: new Date()
-  //   },
-  //   {
-  //     id: 9,
-  //     imageUrl:
-  //       'https://uwja77bygk2kgfqe.public.blob.vercel-storage.com/charger-GzRr0NSkCj0ZYWkTMvxXGZQu47w9r5.webp',
-  //     name: 'Portable Charger Super',
-  //     status: 'active',
-  //     price: '59.00',
-  //     stock: 500,
-  //     availableAt: new Date()
-  //   },
-  //   {
-  //     id: 10,
-  //     imageUrl:
-  //       'https://uwja77bygk2kgfqe.public.blob.vercel-storage.com/thermostat-8GnK2LDE3lZAjUVtiBk61RrSuqSTF7.webp',
-  //     name: 'Smart Thermostat Pro',
-  //     status: 'active',
-  //     price: '199.00',
-  //     stock: 175,
-  //     availableAt: new Date()
-  //   }
-  // ]);
 }

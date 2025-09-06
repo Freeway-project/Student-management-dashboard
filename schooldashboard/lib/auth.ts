@@ -4,6 +4,17 @@ interface User {
   name: string;
   email: string;
   role: string;
+  status?: string;
+  department?: {
+    id: string;
+    name: string;
+    code: string;
+  } | null;
+  allDepartments?: string[];
+  departmentRoles?: Array<{
+    departmentId: string;
+    roles: string[];
+  }>;
 }
 
 const AUTH_KEY = 'faculty_user';

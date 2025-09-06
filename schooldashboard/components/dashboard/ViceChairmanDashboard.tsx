@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Building, Users, AlertCircle, FileText, TrendingUp, Filter, UserPlus } from 'lucide-react';
+import { Building, Users, AlertCircle, FileText, TrendingUp, Filter, UserPlus, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Department {
@@ -38,6 +38,8 @@ export default function ViceChairmanDashboard() {
   const [roleFilter, setRoleFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const [newDepartment, setNewDepartment] = useState({
     name: '',
@@ -54,6 +56,17 @@ export default function ViceChairmanDashboard() {
     departmentId: ''
   });
   const [creatingUser, setCreatingUser] = useState(false);
+
+  // Edit user states
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [updatingUser, setUpdatingUser] = useState(false);
+  const [editUserData, setEditUserData] = useState({
+    name: '',
+    email: '',
+    role: '',
+    departmentId: '',
+    departmentRoles: [] as Array<{ departmentId: string; roles: string[] }>
+  });
 
   const fetchDepartments = async () => {
     try {
@@ -172,6 +185,129 @@ export default function ViceChairmanDashboard() {
     }
   };
 
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setEditUserData({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      departmentId: user.department?.id || '',
+      departmentRoles: [] // Will be populated from user data if available
+    });
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    
+    setUpdatingUser(true);
+    try {
+      const response = await fetch(`/api/users/${editingUser.id}`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-current-user': JSON.stringify({ role: 'VICE_CHAIRMAN', email: 'vice@example.com' })
+        },
+        body: JSON.stringify({
+          name: editUserData.name,
+          email: editUserData.email,
+          role: editUserData.role,
+          departmentId: editUserData.departmentId,
+          departmentRoles: editUserData.departmentRoles.filter(dr => dr.roles.length > 0)
+        })
+      });
+      
+      if (response.ok) {
+        const updatedUser = await response.json();
+        setUsers(users.map(user => user.id === editingUser.id ? updatedUser : user));
+        setEditingUser(null);
+        setEditUserData({ name: '', email: '', role: '', departmentId: '', departmentRoles: [] });
+        toast.success(`User "${updatedUser.name}" updated successfully!`);
+      } else {
+        const error = await response.text();
+        toast.error(error || 'Failed to update user');
+      }
+    } catch (error) {
+      toast.error('Error updating user');
+    } finally {
+      setUpdatingUser(false);
+    }
+  };
+
+  const addDepartmentRole = () => {
+    setEditUserData({
+      ...editUserData,
+      departmentRoles: [...editUserData.departmentRoles, { departmentId: '', roles: [] }]
+    });
+  };
+
+  const removeDepartmentRole = (index: number) => {
+    setEditUserData({
+      ...editUserData,
+      departmentRoles: editUserData.departmentRoles.filter((_, i) => i !== index)
+    });
+  };
+
+  const updateDepartmentRole = (index: number, field: 'departmentId' | 'roles', value: any) => {
+    const updated = [...editUserData.departmentRoles];
+    if (field === 'roles') {
+      // Handle role toggle
+      const role = value;
+      const currentRoles = updated[index].roles;
+      if (currentRoles.includes(role)) {
+        updated[index].roles = currentRoles.filter(r => r !== role);
+      } else {
+        updated[index].roles = [...currentRoles, role];
+      }
+    } else {
+      updated[index][field] = value;
+    }
+    setEditUserData({ ...editUserData, departmentRoles: updated });
+  };
+
+  const getUserDetails = (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return null;
+
+    // Vice-Chairman doesn't have access to tasks, so we'll create a simplified version
+    // Get user's departments (both primary and additional)
+    const userDepartments: any[] = [];
+    
+    // Add primary department
+    if (user.department) {
+      userDepartments.push({
+        ...user.department,
+        roles: [user.role],
+        isPrimary: true
+      });
+    }
+
+    // Add additional departments from departmentRoles if available
+    const userWithRoles = user as any;
+    if (userWithRoles.departmentRoles) {
+      userWithRoles.departmentRoles.forEach((deptRole: any) => {
+        const dept = departments.find(d => d._id === deptRole.departmentId);
+        if (dept && !userDepartments.some(ud => ud.id === dept._id)) {
+          userDepartments.push({
+            id: dept._id,
+            name: dept.name,
+            code: dept.code,
+            roles: deptRole.roles,
+            isPrimary: false
+          });
+        }
+      });
+    }
+
+    return {
+      ...user,
+      departments: userDepartments,
+      stats: {
+        totalDepartments: userDepartments.length
+      }
+    };
+  };
+
   useEffect(() => {
     fetchDepartments();
     fetchUsers();
@@ -192,6 +328,24 @@ export default function ViceChairmanDashboard() {
 
   const getDepartmentUsers = (departmentId: string) => {
     return users.filter(user => user.department && user.department.id === departmentId);
+  };
+
+  const getDepartmentDetails = (departmentId: string) => {
+    const dept = departments.find(d => d._id === departmentId);
+    if (!dept) return null;
+    
+    const deptUsers = getDepartmentUsers(departmentId);
+    
+    return {
+      ...dept,
+      users: deptUsers,
+      stats: {
+        totalUsers: deptUsers.length,
+        hods: deptUsers.filter(u => u.role === 'HOD').length,
+        coordinators: deptUsers.filter(u => u.role === 'COORDINATOR').length,
+        professors: deptUsers.filter(u => u.role === 'PROFESSOR').length,
+      }
+    };
   };
 
   return (
@@ -270,49 +424,153 @@ export default function ViceChairmanDashboard() {
         </TabsContent>
 
         <TabsContent value="departments" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium">Department Overview</h3>
-            <Button onClick={fetchDepartments} variant="outline" size="sm">
-              Refresh
-            </Button>
-          </div>
+          {selectedDepartmentId ? (
+            <>
+              {/* Department Detail View */}
+              <div className="flex items-center justify-between">
+                <Button variant="ghost" onClick={() => setSelectedDepartmentId(null)} className="text-blue-600">
+                  ← Back to All Departments
+                </Button>
+                <Button onClick={() => {fetchDepartments(); fetchUsers();}} variant="outline" size="sm">
+                  Refresh
+                </Button>
+              </div>
 
-          {loading ? (
-            <div className="text-center py-8">Loading departments...</div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {departments.map((dept) => {
-                const deptUsers = getDepartmentUsers(dept._id);
+              {(() => {
+                const deptDetails = getDepartmentDetails(selectedDepartmentId);
+                if (!deptDetails) return <div>Department not found</div>;
+
                 return (
-                  <Card key={dept._id}>
-                    <CardHeader>
-                      <CardTitle className="flex items-center justify-between">
-                        {dept.name}
-                        <span className="text-sm font-normal text-muted-foreground">({dept.code})</span>
-                      </CardTitle>
-                      {dept.description && (
-                        <CardDescription>{dept.description}</CardDescription>
-                      )}
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Users: {deptUsers.length}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Established: {new Date(dept.createdAt).toLocaleDateString()}
-                        </p>
-                        <div className={`inline-block px-2 py-1 text-xs rounded ${
-                          dept.isActive 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {dept.isActive ? 'Active' : 'Inactive'}
+                  <div className="space-y-6">
+                    {/* Department Header */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-2xl">{deptDetails.name}</CardTitle>
+                        <CardDescription className="text-lg">
+                          Code: {deptDetails.code} • {deptDetails.description}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-blue-600">{deptDetails.stats.totalUsers}</div>
+                            <div className="text-sm text-muted-foreground">Total Faculty</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-purple-600">{deptDetails.stats.hods}</div>
+                            <div className="text-sm text-muted-foreground">HODs</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-green-600">{deptDetails.stats.coordinators}</div>
+                            <div className="text-sm text-muted-foreground">Coordinators</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-orange-600">{deptDetails.stats.professors}</div>
+                            <div className="text-sm text-muted-foreground">Professors</div>
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+
+                    {/* Department Users */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Department Faculty ({deptDetails.stats.totalUsers})</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid gap-4">
+                          {deptDetails.users.map((user) => (
+                            <div key={user.id} className="flex items-center justify-between p-3 border rounded">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-semibold">{user.name}</h4>
+                                  <span className={`px-2 py-1 text-xs rounded ${
+                                    user.role === 'HOD' ? 'bg-purple-100 text-purple-800' :
+                                    user.role === 'PROFESSOR' ? 'bg-blue-100 text-blue-800' :
+                                    user.role === 'COORDINATOR' ? 'bg-green-100 text-green-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {user.role}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-muted-foreground">{user.email}</p>
+                                {user.phone && <p className="text-sm text-muted-foreground">Phone: {user.phone}</p>}
+                                {user.lastLoginAt && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Last login: {new Date(user.lastLoginAt).toLocaleDateString()}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          {deptDetails.users.length === 0 && (
+                            <p className="text-center text-muted-foreground py-4">No faculty in this department</p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 );
-              })}
-            </div>
+              })()}
+            </>
+          ) : (
+            <>
+              {/* Department List View */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">All Departments</h3>
+                <Button onClick={fetchDepartments} variant="outline" size="sm">
+                  Refresh
+                </Button>
+              </div>
+
+              {loading ? (
+                <div className="text-center py-8">Loading departments...</div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {departments.map((dept) => {
+                    const deptUsers = getDepartmentUsers(dept._id);
+                    return (
+                      <Card key={dept._id} 
+                            className="cursor-pointer hover:bg-gray-50 transition-colors"
+                            onClick={() => setSelectedDepartmentId(dept._id)}>
+                        <CardHeader>
+                          <CardTitle className="flex items-center justify-between">
+                            {dept.name}
+                            <span className="text-sm font-normal text-muted-foreground">({dept.code})</span>
+                          </CardTitle>
+                          {dept.description && (
+                            <CardDescription>{dept.description}</CardDescription>
+                          )}
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">Faculty: {deptUsers.length}</p>
+                            <div className="flex gap-4 text-xs text-muted-foreground">
+                              <span>HODs: {deptUsers.filter(u => u.role === 'HOD').length}</span>
+                              <span>Coordinators: {deptUsers.filter(u => u.role === 'COORDINATOR').length}</span>
+                              <span>Professors: {deptUsers.filter(u => u.role === 'PROFESSOR').length}</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              Established: {new Date(dept.createdAt).toLocaleDateString()}
+                            </p>
+                            <div className="flex items-center justify-between">
+                              <div className={`inline-block px-2 py-1 text-xs rounded ${
+                                dept.isActive 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {dept.isActive ? 'Active' : 'Inactive'}
+                              </div>
+                              <span className="text-xs text-blue-600">Click to view details →</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 
@@ -449,9 +707,14 @@ export default function ViceChairmanDashboard() {
                           </p>
                         )}
                       </div>
-                      <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
-                        Delete
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleEditUser(user)}>
+                          Edit
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
+                          Delete
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -580,6 +843,161 @@ export default function ViceChairmanDashboard() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Edit User</h2>
+              <Button variant="ghost" size="sm" onClick={() => setEditingUser(null)}>
+                ✕
+              </Button>
+            </div>
+
+            <form onSubmit={handleUpdateUser} className="space-y-4">
+              {/* Basic Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Full Name *</label>
+                  <input
+                    type="text"
+                    value={editUserData.name}
+                    onChange={(e) => setEditUserData({...editUserData, name: e.target.value})}
+                    className="w-full mt-1 px-3 py-2 border rounded-md"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Email *</label>
+                  <input
+                    type="email"
+                    value={editUserData.email}
+                    onChange={(e) => setEditUserData({...editUserData, email: e.target.value})}
+                    className="w-full mt-1 px-3 py-2 border rounded-md"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Primary Role & Department */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Primary Role *</label>
+                  <select
+                    value={editUserData.role}
+                    onChange={(e) => setEditUserData({...editUserData, role: e.target.value})}
+                    className="w-full mt-1 px-3 py-2 border rounded-md"
+                    required
+                  >
+                    <option value="">Select Role</option>
+                    <option value="HOD">Head of Department</option>
+                    <option value="COORDINATOR">Coordinator</option>
+                    <option value="PROFESSOR">Professor</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Primary Department *</label>
+                  <select
+                    value={editUserData.departmentId}
+                    onChange={(e) => setEditUserData({...editUserData, departmentId: e.target.value})}
+                    className="w-full mt-1 px-3 py-2 border rounded-md"
+                    required
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map((dept) => (
+                      <option key={dept._id} value={dept._id}>
+                        {dept.name} ({dept.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Multi-Department Roles */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium">Additional Department Roles</label>
+                  <Button type="button" variant="outline" size="sm" onClick={addDepartmentRole}>
+                    + Add Role
+                  </Button>
+                </div>
+                
+                <div className="space-y-3">
+                  {editUserData.departmentRoles.map((deptRole, index) => (
+                    <div key={index} className="border rounded-md p-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium">Department Role #{index + 1}</h4>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => removeDepartmentRole(index)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-sm font-medium">Department</label>
+                          <select
+                            value={deptRole.departmentId}
+                            onChange={(e) => updateDepartmentRole(index, 'departmentId', e.target.value)}
+                            className="w-full mt-1 px-3 py-2 border rounded-md"
+                          >
+                            <option value="">Select Department</option>
+                            {departments.map((dept) => (
+                              <option key={dept._id} value={dept._id}>
+                                {dept.name} ({dept.code})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm font-medium">Roles</label>
+                          <div className="mt-1 space-y-1">
+                            {['HOD', 'COORDINATOR', 'PROFESSOR'].map((role) => (
+                              <label key={role} className="flex items-center space-x-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={deptRole.roles.includes(role)}
+                                  onChange={() => updateDepartmentRole(index, 'roles', role)}
+                                  className="rounded"
+                                />
+                                <span>{role}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {editUserData.departmentRoles.length === 0 && (
+                  <p className="text-sm text-muted-foreground italic">
+                    No additional roles assigned. Click "Add Role" to assign roles in other departments.
+                  </p>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => setEditingUser(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={updatingUser}>
+                  {updatingUser ? 'Updating...' : 'Update User'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

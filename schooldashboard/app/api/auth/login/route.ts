@@ -8,6 +8,9 @@ export async function POST(request: NextRequest) {
   try {
     await connectDB()
     
+    // Ensure models are registered
+    const _ = Department; // This ensures Department model is loaded
+    
     const { email, password } = await request.json()
 
     if (!email || !password) {
@@ -52,7 +55,10 @@ export async function POST(request: NextRequest) {
         id: user.departmentId._id.toString(),
         name: user.departmentId.name,
         code: user.departmentId.code
-      } : null
+      } : null,
+      // Include multi-department info if exists
+      allDepartments: user.getAllDepartments ? user.getAllDepartments().map((dId: any) => dId.toString()) : [],
+      departmentRoles: user.departmentRoles || []
     }
 
     return NextResponse.json({

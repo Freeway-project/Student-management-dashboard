@@ -21,27 +21,26 @@ export default function RoleSwapper() {
   //   setIsVisible(isDev || isAdmin);
   // }, [user]);
 
-  // Test accounts from seed data
+  // Test accounts from seed data (updated with new simple credentials)
   const testAccounts = [
-    { email: 'admin@university.edu', role: 'PROGRAM_ADMIN', name: 'Program Admin' },
-
-    { email: 'chairman@university.edu', role: 'CHAIRMAN', name: 'Chairman' },
-    { email: 'vice.chairman@university.edu', role: 'VICE_CHAIRMAN', name: 'Vice Chairman' },
-    { email: 'hod.cs@university.edu', role: 'HOD', name: 'HOD CS' },
-    { email: 'hod.ee@university.edu', role: 'HOD', name: 'HOD EE' },
-    { email: 'coordinator.cs@university.edu', role: 'COORDINATOR', name: 'Coordinator CS' },
-    { email: 'coordinator.ee@university.edu', role: 'COORDINATOR', name: 'Coordinator EE' },
-    { email: 'prof.cs1@university.edu', role: 'PROFESSOR', name: 'Prof CS1' },
-    { email: 'prof.cs2@university.edu', role: 'PROFESSOR', name: 'Prof CS2' },
-    { email: 'prof.ee1@university.edu', role: 'PROFESSOR', name: 'Prof EE1' },
-    { email: 'prof.ee2@university.edu', role: 'PROFESSOR', name: 'Prof EE2' },
+    { email: 'admin@gmail.com', role: 'PROGRAM_ADMIN', name: 'Program Admin', dept: '' },
+    { email: 'chair@gmail.com', role: 'CHAIRMAN', name: 'Chairman', dept: '' },
+    { email: 'vice@gmail.com', role: 'VICE_CHAIRMAN', name: 'Vice Chairman', dept: '' },
+    
+    { email: 'cshod@gmail.com', role: 'HOD', name: 'CS HOD', dept: 'CS' },
+    { email: 'mathhod@gmail.com', role: 'HOD', name: 'Math HOD', dept: 'MATH' },
+    { email: 'multi@gmail.com', role: 'HOD', name: 'Multi-Dept HOD', dept: 'BCA/BTECH/CS', isMulti: true },
+    
+    { email: 'cscoord@gmail.com', role: 'COORDINATOR', name: 'CS Coordinator', dept: 'CS' },
+    { email: 'csprof@gmail.com', role: 'PROFESSOR', name: 'CS Professor', dept: 'CS' },
+    { email: 'mathprof@gmail.com', role: 'PROFESSOR', name: 'Math Professor', dept: 'MATH' },
   ];
 
   const quickLogin = async (email: string, role: string) => {
     setIsLoading(true);
     setLoadingRole(role);
     try {
-      const result = await login(email, 'password123');
+      const result = await login(email, '000000');
       if (result.success) {
         // User state automatically updated via context
       } else {
@@ -110,11 +109,28 @@ export default function RoleSwapper() {
                   <User className="h-4 w-4 text-gray-500" />
                   <span className="text-sm font-medium">{user.name}</span>
                 </div>
-                <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
-                  {user.role}
-                </Badge>
+                <div className="flex items-center gap-1">
+                  <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
+                    {user.role}
+                  </Badge>
+                  {(user as any).departmentRoles && (user as any).departmentRoles.length > 1 && (
+                    <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
+                      Multi
+                    </Badge>
+                  )}
+                </div>
               </div>
-              <div className="text-xs text-gray-500 mt-1">{user.email}</div>
+              <div className="text-xs text-gray-500 mt-1">
+                {user.email}
+                {user.department && (
+                  <span className="ml-2">• {user.department.name}</span>
+                )}
+              </div>
+              {(user as any).departmentRoles && (user as any).departmentRoles.length > 1 && (
+                <div className="text-xs text-blue-600 mt-1">
+                  Multi-dept: {(user as any).allDepartments?.length || (user as any).departmentRoles?.length} departments
+                </div>
+              )}
             </div>
           )}
 
@@ -132,16 +148,30 @@ export default function RoleSwapper() {
                   variant="ghost"
                   onClick={() => quickLogin(account.email, account.role)}
                   disabled={isLoading}
-                  className="h-8 text-xs justify-between p-2 hover:bg-orange-100"
+                  className={`h-10 text-xs justify-between p-2 hover:bg-orange-100 ${
+                    account.isMulti ? 'border border-blue-200 bg-blue-50 hover:bg-blue-100' : ''
+                  }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <Badge variant={getRoleBadgeVariant(account.role)} className="text-xs">
-                      {account.role === 'VICE_CHAIRMAN' ? 'VC' : 
-                       account.role === 'PROGRAM_ADMIN' ? 'PA' :
-                       account.role === 'COMPANY_ADMIN' ? 'CA' :
-                       account.role.slice(0, 4)}
-                    </Badge>
-                    <span>{account.name}</span>
+                  <div className="flex flex-col items-start gap-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={getRoleBadgeVariant(account.role)} className="text-xs">
+                        {account.role === 'VICE_CHAIRMAN' ? 'VC' : 
+                         account.role === 'PROGRAM_ADMIN' ? 'PA' :
+                         account.role === 'COMPANY_ADMIN' ? 'CA' :
+                         account.role.slice(0, 4)}
+                      </Badge>
+                      <span className="font-medium">{account.name}</span>
+                      {account.isMulti && (
+                        <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
+                          Multi
+                        </Badge>
+                      )}
+                    </div>
+                    {account.dept && (
+                      <div className="text-xs text-gray-500">
+                        {account.isMulti ? `${account.dept}` : `Dept: ${account.dept}`}
+                      </div>
+                    )}
                   </div>
                   {loadingRole === account.role && isLoading ? (
                     <RefreshCw className="h-3 w-3 animate-spin" />
@@ -153,8 +183,9 @@ export default function RoleSwapper() {
 
           {/* Quick Info */}
           <div className="text-xs text-orange-600 bg-orange-100 p-2 rounded border border-orange-200">
-            🔐 Password: <strong>faculty123</strong> (all accounts)
+            🔐 Password: <strong>000000</strong> (all accounts)
             <br />⚡ Click any role above to login instantly
+            <br />🔄 <span className="text-blue-600 font-medium">Multi</span> = Multi-department user
           </div>
         </CardContent>
       )}
@@ -169,6 +200,11 @@ export default function RoleSwapper() {
                user.role === 'COMPANY_ADMIN' ? 'CA' :
                user.role.slice(0, 4)}
             </Badge>
+            {(user as any).departmentRoles && (user as any).departmentRoles.length > 1 && (
+              <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
+                Multi
+              </Badge>
+            )}
             <span className="text-sm font-medium text-orange-800 truncate">
               {user.name}
             </span>
