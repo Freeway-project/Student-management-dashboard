@@ -13,6 +13,8 @@ import TaskList from '@/components/tasks/TaskList';
 import TaskDetail from '@/components/tasks/TaskDetail';
 import CreateTaskForm from '@/components/tasks/CreateTaskForm';
 import { useAuth } from '@/lib/auth-context';
+import StatsOverview from './shared/StatsOverview';
+import TasksManagement from './shared/TasksManagement';
 
 interface Department {
   _id: string;
@@ -632,29 +634,12 @@ export default function ChairmanDashboard() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Departments</CardTitle>
-                <Building className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{Array.isArray(departments) ? departments.length : 0}</div>
-                <p className="text-xs text-muted-foreground">Active departments</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Faculty</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">342</div>
-                <p className="text-xs text-muted-foreground">Teaching staff</p>
-              </CardContent>
-            </Card>
-          </div>
+          <StatsOverview 
+            departments={departments}
+            users={users}
+            tasks={tasks}
+            loading={loading || usersLoading || tasksLoading}
+          />
         </TabsContent>
 
         <TabsContent value="departments" className="space-y-4">
@@ -1416,47 +1401,18 @@ export default function ChairmanDashboard() {
         </TabsContent>
 
         <TabsContent value="all-tasks" className="space-y-4">
-          {selectedTaskId ? (
-            <TaskDetail
-              taskId={selectedTaskId}
-              onBack={() => setSelectedTaskId(null)}
-              getPriorityColor={getPriorityColor}
-              getStatusColor={getStatusColor}
-            />
-          ) : (
-            <>
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium flex items-center gap-2">
-                  <CheckSquare className="h-5 w-5" />
-                  All Tasks
-                </h3>
-                <Button onClick={fetchTasks} variant="outline" size="sm">
-                  Refresh
-                </Button>
-              </div>
-
-              <TaskFilters
-                statusFilter={taskStatusFilter}
-                setStatusFilter={setTaskStatusFilter}
-                priorityFilter={taskPriorityFilter}
-                setPriorityFilter={setTaskPriorityFilter}
-                searchTerm={taskSearchTerm}
-                setSearchTerm={setTaskSearchTerm}
-              />
-
-              {tasksLoading ? (
-                <div className="text-center py-8">Loading tasks...</div>
-              ) : (
-                <TaskList
-                  tasks={filteredTasks}
-                  departments={departments}
-                  getPriorityColor={getPriorityColor}
-                  getStatusColor={getStatusColor}
-                  onTaskClick={setSelectedTaskId}
-                />
-              )}
-            </>
-          )}
+          <TasksManagement
+            tasks={tasks}
+            users={users}
+            departments={departments}
+            currentUser={currentUser}
+            onRefresh={() => {
+              fetchDepartments();
+              fetchUsers();
+              fetchTasks();
+            }}
+            loading={tasksLoading}
+          />
         </TabsContent>
 
         <TabsContent value="create-task" className="space-y-4">

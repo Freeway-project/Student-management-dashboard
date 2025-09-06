@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Building, Users, AlertCircle, FileText, TrendingUp, Filter, UserPlus, User } from 'lucide-react';
+import { Building, Users, AlertCircle, FileText, TrendingUp, Filter, UserPlus, User, CheckSquare, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import StatsOverview from './shared/StatsOverview';
+import TasksManagement from './shared/TasksManagement';
+import { useAuth } from '@/lib/auth-context';
 
 interface Department {
   _id: string;
@@ -30,13 +33,36 @@ interface User {
   bio?: string;
 }
 
+interface Task {
+  _id: string;
+  title: string;
+  description: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  status: 'ASSIGNED' | 'IN_PROGRESS' | 'SUBMITTED' | 'COMPLETED';
+  dueAt?: string;
+  assignedTo: User[];
+  assignments: Array<{
+    userId: string;
+    departmentId: string;
+    assignedRole: string;
+    status: string;
+  }>;
+  assignedBy: User;
+  departmentId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function ViceChairmanDashboard() {
   const router = useRouter();
+  const { user: currentUser } = useAuth();
   
   const [departments, setDepartments] = useState<Department[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(true);
+  const [tasksLoading, setTasksLoading] = useState(true);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [roleFilter, setRoleFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -134,6 +160,28 @@ export default function ViceChairmanDashboard() {
       toast.error('Error fetching users');
     } finally {
       setUsersLoading(false);
+    }
+  };
+
+  const fetchTasks = async () => {
+    setTasksLoading(true);
+    try {
+      const response = await fetch('/api/tasks', {
+        headers: {
+          'x-current-user': JSON.stringify({ role: 'PROGRAM_ADMIN', email: 'admin@example.com' })
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setTasks(data.tasks || []);
+      } else {
+        toast.error('Failed to fetch tasks');
+      }
+    } catch (error) {
+      toast.error('Error fetching tasks');
+    } finally {
+      setTasksLoading(false);
     }
   };
 
@@ -333,6 +381,7 @@ export default function ViceChairmanDashboard() {
   useEffect(() => {
     fetchDepartments();
     fetchUsers();
+    fetchTasks();
   }, []);
 
   useEffect(() => {
@@ -394,55 +443,18 @@ export default function ViceChairmanDashboard() {
           <TabsTrigger value="create-department">Create Department</TabsTrigger>
           <TabsTrigger value="users">All Users</TabsTrigger>
           <TabsTrigger value="create-user">Create User</TabsTrigger>
+          <TabsTrigger value="all-tasks">All Tasks</TabsTrigger>
+          <TabsTrigger value="create-task">Create Task</TabsTrigger>
           <TabsTrigger value="admin-tasks">Administrative Tasks</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Departments</CardTitle>
-                <Building className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{departments.filter(d => d.isActive).length}</div>
-                <p className="text-xs text-muted-foreground">Under supervision</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Faculty</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">156</div>
-                <p className="text-xs text-muted-foreground">Total staff</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending Tasks</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">15</div>
-                <p className="text-xs text-muted-foreground">Awaiting approval</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Performance</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">91%</div>
-                <p className="text-xs text-muted-foreground">Overall rating</p>
-              </CardContent>
-            </Card>
-          </div>
+          <StatsOverview 
+            departments={departments}
+            users={users}
+            tasks={tasks}
+            loading={loading || usersLoading || tasksLoading}
+          />
         </TabsContent>
 
         <TabsContent value="departments" className="space-y-4">
@@ -453,7 +465,7 @@ export default function ViceChairmanDashboard() {
                 <Button variant="ghost" onClick={() => setSelectedDepartmentId(null)} className="text-blue-600">
                   ← Back to All Departments
                 </Button>
-                <Button onClick={() => {fetchDepartments(); fetchUsers();}} variant="outline" size="sm">
+                <Button onClick={() => {fetchDepartments(); fetchUsers(); fetchTasks();}} variant="outline" size="sm">
                   Refresh
                 </Button>
               </div>
@@ -547,7 +559,7 @@ export default function ViceChairmanDashboard() {
               {/* Department List View */}
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium">All Departments</h3>
-                <Button onClick={fetchDepartments} variant="outline" size="sm">
+                <Button onClick={() => {fetchDepartments(); fetchTasks();}} variant="outline" size="sm">
                   Refresh
                 </Button>
               </div>
@@ -1001,6 +1013,39 @@ export default function ViceChairmanDashboard() {
                   {creatingUser ? 'Creating...' : 'Create User'}
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="all-tasks" className="space-y-4">
+          <TasksManagement
+            tasks={tasks}
+            users={users}
+            departments={departments}
+            currentUser={currentUser}
+            onRefresh={() => {
+              fetchDepartments();
+              fetchUsers();
+              fetchTasks();
+            }}
+            loading={tasksLoading}
+          />
+        </TabsContent>
+
+        <TabsContent value="create-task" className="space-y-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Plus className="h-5 w-5" />
+            <h3 className="text-lg font-medium">Create New Task</h3>
+          </div>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-4">Task creation functionality will be integrated here</p>
+                <p className="text-sm text-muted-foreground">
+                  This will include full task creation with assignment capabilities
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

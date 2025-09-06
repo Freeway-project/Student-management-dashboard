@@ -16,6 +16,8 @@ export async function POST(
     const body = await req.json();
     const { status, deliverables, message } = body;
 
+    console.log('📝 Task Submit API - Request body:', { status, deliverables, message });
+
     // Find the task
     const task = await Task.findById(taskId);
     if (!task) {
@@ -33,16 +35,44 @@ export async function POST(
 
     // Create submission record if deliverables are provided
     if (deliverables && deliverables.length > 0) {
+      const userId = req.headers.get('x-user-id');
+      if (!userId) {
+        return NextResponse.json(
+          { error: 'User ID is required in headers' },
+          { status: 400 }
+        );
+      }
+
+      console.log('📝 Creating submission for user:', userId);
+
       // Check if there's an existing submission
       const existingSubmission = await Submission.findOne({
         taskId,
-        submittedBy: req.headers.get('x-user-id'), // You'll need to pass user ID in headers
+        submittedBy: userId,
         isLatestVersion: true
       });
 
+      console.log('📝 Existing submission:', existingSubmission ? 'Found' : 'Not found');
+
+      // Transform deliverables to attachments format
+      const attachments = deliverables
+        .filter((deliverable: any) => deliverable.fileUrl) // Only include deliverables with files
+        .map((deliverable: any) => ({
+          filename: deliverable.label || deliverable.type || 'Untitled',
+          originalName: deliverable.label || deliverable.type || 'Untitled',
+          mimeType: deliverable.type === 'PDF' ? 'application/pdf' : 
+                   deliverable.type === 'EXCEL' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' :
+                   'application/octet-stream',
+          size: 0, // We don't have size info from the frontend
+          uploadedAt: new Date(),
+          driveFileId: deliverable.fileUrl // Store the file URL in driveFileId field
+        }));
+
+      console.log('📝 Transformed attachments:', attachments);
+
       const submissionData = {
         taskId,
-        submittedBy: req.headers.get('x-user-id'), // You'll need to pass user ID in headers
+        submittedBy: userId,
         submissionType: existingSubmission ? 'REVISION' : 'INITIAL',
         version: existingSubmission ? existingSubmission.version + 1 : 1,
         title: `${task.title} - Submission`,
@@ -50,27 +80,40 @@ export async function POST(
         notes: message || undefined,
         status: 'SUBMITTED',
         submittedAt: new Date(),
-        deliverables
+        attachments // Use attachments instead of deliverables
       };
 
       // Mark existing submission as not latest
       if (existingSubmission) {
         existingSubmission.isLatestVersion = false;
         await existingSubmission.save();
+        console.log('📝 Marked existing submission as not latest');
       }
 
       // Save new submission
+      console.log('📝 Creating new submission with data:', submissionData);
       const newSubmission = new Submission(submissionData);
       await newSubmission.save();
+      console.log('📝 New submission created with ID:', newSubmission._id);
 
       // Update task assignment status
-      await TaskAssignment.updateOne(
-        { taskId, userId: req.headers.get('x-user-id') },
-        { status: 'SUBMITTED' }
+      const taskAssignmentUpdate = await TaskAssignment.updateOne(
+        { taskId, assigneeUserId: userId },
+        { 
+          status: 'IN_REVIEW', // Use the correct enum value for submitted assignments
+          lastSubmissionId: newSubmission._id,
+          lastSubmittedAt: new Date(),
+          $inc: { attempts: 1 }
+        }
       );
+      console.log('📝 TaskAssignment update result:', taskAssignmentUpdate);
     }
 
-    return NextResponse.json({ message: 'Submission successful' });
+    console.log('📝 Task submission completed successfully');
+    return NextResponse.json({ 
+      message: 'Submission successful',
+      submissionCreated: deliverables && deliverables.length > 0
+    });
 
   } catch (error) {
     console.error('Submission error:', error);
