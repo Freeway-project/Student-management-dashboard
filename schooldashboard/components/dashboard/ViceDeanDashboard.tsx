@@ -92,7 +92,7 @@ export default function ViceDeanDashboard() {
       const response = await fetch('/api/departments');
       if (response.ok) {
         const data = await response.json();
-        setDepartments(data);
+        setDepartments(data.departments || []);
       }
     } catch (error) {
       toast.error('Failed to fetch departments');

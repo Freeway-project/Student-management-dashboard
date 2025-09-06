@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -59,6 +60,7 @@ interface Task {
 
 export default function ChairmanDashboard() {
   const { user: currentUser } = useAuth();
+  const router = useRouter();
   
   const [departments, setDepartments] = useState<Department[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -140,7 +142,7 @@ export default function ChairmanDashboard() {
       const response = await fetch('/api/departments');
       if (response.ok) {
         const data = await response.json();
-        setDepartments(data);
+        setDepartments(data.departments || []);
       }
     } catch (error) {
       toast.error('Failed to fetch departments');
@@ -715,7 +717,11 @@ export default function ChairmanDashboard() {
                       <TabsContent value="users" className="space-y-4">
                         <div className="grid gap-4">
                           {deptDetails.users.map((user) => (
-                            <Card key={user.id}>
+                            <Card 
+                              key={user.id} 
+                              className="cursor-pointer hover:bg-gray-50 transition-colors"
+                              onClick={() => router.push(`/dashboard/users/${user.id}`)}
+                            >
                               <CardContent className="pt-4">
                                 <div className="flex justify-between items-start">
                                   <div className="space-y-2">
@@ -742,6 +748,9 @@ export default function ChairmanDashboard() {
                                         Last login: {new Date(user.lastLoginAt).toLocaleDateString()}
                                       </p>
                                     )}
+                                  </div>
+                                  <div className="text-xs text-blue-600">
+                                    Click to view details →
                                   </div>
                                 </div>
                               </CardContent>
@@ -1226,15 +1235,16 @@ export default function ChairmanDashboard() {
           ) : (
             <div className="grid gap-4">
               {filteredUsersForUserManagement.map((user) => (
-                <Card key={user.id}>
+                <Card 
+                  key={user.id}
+                  className="cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={() => router.push(`/dashboard/users/${user.id}`)}
+                >
                   <CardContent className="pt-4">
                     <div className="flex justify-between items-start">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <h4 
-                            className="font-semibold text-blue-600 hover:text-blue-800 cursor-pointer"
-                            onClick={() => setSelectedUserId(user.id)}
-                          >
+                          <h4 className="font-semibold text-blue-600">
                             {user.name}
                           </h4>
                           <span className={`px-2 py-1 text-xs rounded ${
@@ -1287,11 +1297,26 @@ export default function ChairmanDashboard() {
                           </p>
                         )}
                       </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEditUser(user)}>
+                      <div className="flex gap-2 items-center">
+                        <span className="text-xs text-blue-600 mr-auto">Click to view details →</span>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditUser(user);
+                          }}
+                        >
                           Edit
                         </Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.id)}>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteUser(user.id);
+                          }}
+                        >
                           Delete
                         </Button>
                       </div>

@@ -121,7 +121,7 @@ export default function TaskManagement() {
       const deptResponse = await fetch('/api/departments');
       if (deptResponse.ok) {
         const deptData = await deptResponse.json();
-        setDepartments(deptData);
+        setDepartments(deptData.departments || []);
       }
 
       // Fetch users
