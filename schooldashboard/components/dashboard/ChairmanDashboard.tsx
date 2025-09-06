@@ -1658,21 +1658,21 @@ export default function ChairmanDashboard() {
             </div>
 
             <TasksManagement
-              tasks={tasks.filter(task => 
-                task.assignedTo?.some(assignee => assignee.userId === currentUser?.id)
-              )}
-              setSelectedTaskId={setSelectedTaskId}
-              selectedTaskId={selectedTaskId}
-              taskStatusFilter={taskStatusFilter}
-              setTaskStatusFilter={setTaskStatusFilter}
-              taskPriorityFilter={taskPriorityFilter}
-              setTaskPriorityFilter={setTaskPriorityFilter}
-              taskSearchTerm={taskSearchTerm}
-              setTaskSearchTerm={setTaskSearchTerm}
-              handleTaskUpdate={fetchTasks}
-              showUserColumn={false}
+              tasks={tasks.filter(task => {
+                // Check new assignments structure
+                const assignmentMatch = task.assignments?.some(assignment => assignment.userId === currentUser?.id);
+                // Check legacy assignedTo structure  
+                const legacyMatch = task.assignedTo?.some(assignee => assignee.id === currentUser?.id);
+                return assignmentMatch || legacyMatch;
+              })}
+              users={users}
+              departments={departments}
               currentUser={currentUser}
-              enableTaskSubmission={true}
+              onRefresh={() => {
+                fetchDepartments();
+                fetchUsers();
+                fetchTasks();
+              }}
               loading={tasksLoading}
             />
           </TabsContent>

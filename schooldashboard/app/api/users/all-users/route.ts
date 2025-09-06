@@ -19,10 +19,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid user data' }, { status: 401 });
     }
 
-    // Role check - Program Admin, Chairman, and Vice Chairman can see all users
-    const allowedRoles = ['PROGRAM_ADMIN', 'CHAIRMAN', 'VICE_CHAIRMAN'];
+    // Hierarchical role check with different access levels
+    const roleHierarchy = {
+      'PROGRAM_ADMIN': ['PROGRAM_ADMIN', 'CHAIRMAN', 'VICE_CHAIRMAN', 'HOD', 'COORDINATOR', 'PROFESSOR'],
+      'CHAIRMAN': ['CHAIRMAN', 'VICE_CHAIRMAN', 'HOD', 'COORDINATOR', 'PROFESSOR'],
+      'VICE_CHAIRMAN': ['VICE_CHAIRMAN', 'HOD', 'COORDINATOR', 'PROFESSOR'],
+      'HOD': ['HOD', 'COORDINATOR', 'PROFESSOR'],
+      'COORDINATOR': ['COORDINATOR', 'PROFESSOR'],
+    };
+
+    const allowedRoles = ['PROGRAM_ADMIN', 'CHAIRMAN', 'VICE_CHAIRMAN', 'HOD', 'COORDINATOR'];
     if (!allowedRoles.includes(currentUser.role)) {
-      return NextResponse.json({ error: 'Insufficient permissions. Chairman, Vice Chairman, or Program Admin access required' }, { status: 403 });
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    // Get accessible roles based on current user's role
+    const accessibleRoles = roleHierarchy[currentUser.role as keyof typeof roleHierarchy] || [];
+
+    // For HOD and COORDINATOR, we need to limit to their own departments
+    let departmentRestriction = null;
+    if (currentUser.role === 'HOD' || currentUser.role === 'COORDINATOR') {
+      // Get current user's department information
+      const currentUserDoc = await User.findOne({ email: currentUser.email }).populate('departmentId');
+      if (currentUserDoc?.departmentId) {
+        departmentRestriction = currentUserDoc.departmentId._id.toString();
+      }
     }
 
     // Get query parameters for filtering
@@ -35,8 +56,26 @@ export async function GET(request: NextRequest) {
     // Build query
     const query: any = { deletedAt: null };
     
+    // Add hierarchical role filtering - only show users with roles the current user can access
+    query.role = { $in: accessibleRoles };
+    
+    // Add department restriction for HOD and COORDINATOR
+    if (departmentRestriction) {
+      query.departmentId = departmentRestriction;
+    }
+    
     if (roleFilter) {
-      query.role = roleFilter;
+      // If a specific role is requested, make sure it's accessible and apply it
+      if (accessibleRoles.includes(roleFilter)) {
+        query.role = roleFilter;
+      } else {
+        // If requested role is not accessible, return empty result
+        return NextResponse.json({
+          users: [],
+          stats: { totalUsers: 0, activeUsers: 0, roleCount: {}, departmentCount: {}, recentLogins: [] },
+          filters: { totalResults: 0, appliedFilters: { role: roleFilter, status: statusFilter, department: departmentFilter, search: search } }
+        });
+      }
     }
     
     if (statusFilter) {
@@ -68,8 +107,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get statistics
-    const allUsers = await User.find({ deletedAt: null });
+    // Get statistics based on user's access level
+    const statsQuery: any = { deletedAt: null, role: { $in: accessibleRoles } };
+    if (departmentRestriction) {
+      statsQuery.departmentId = departmentRestriction;
+    }
+    
+    const allUsers = await User.find(statsQuery);
     const stats = {
       totalUsers: allUsers.length,
       activeUsers: allUsers.filter(u => u.status === 'ACTIVE').length,

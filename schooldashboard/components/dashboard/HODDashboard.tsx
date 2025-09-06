@@ -74,6 +74,37 @@ export default function HODDashboard() {
   const [submissionMessage, setSubmissionMessage] = useState('');
   const [showCreateTask, setShowCreateTask] = useState(false);
 
+  // Task creation states
+  const [users, setUsers] = useState<User[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    instructions: '',
+    priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+    dueAt: '',
+    assignedTo: [] as string[],
+    assignments: [] as Array<{
+      userId: string;
+      departmentId: string;
+      assignedRole: string;
+      userName: string;
+      departmentName: string;
+      departmentCode: string;
+    }>,
+    departments: [] as string[],
+    requiredDeliverables: [
+      {
+        type: 'PDF',
+        label: '',
+        optional: false
+      }
+    ]
+  });
+  const [creating, setCreating] = useState(false);
+
   // Helper function to check if user is assigned to task
   const isUserAssignedToTask = (task: Task, userId: string) => {
     // Check new assignments structure
@@ -123,21 +154,6 @@ export default function HODDashboard() {
     
     return grouped;
   };
-  
-  // Create task form state
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [creating, setCreating] = useState(false);
-  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
-  const [newTask, setNewTask] = useState({
-    title: '',
-    description: '',
-    instructions: '',
-    priority: 'MEDIUM',
-    dueAt: '',
-    assignedTo: [] as string[],
-    requiredDeliverables: [] as Deliverable[]
-  });
 
   useEffect(() => {
     if (user) {
@@ -146,6 +162,18 @@ export default function HODDashboard() {
       fetchUsers();
     }
   }, [user]);
+
+  // Filter users based on selected departments for task assignment
+  useEffect(() => {
+    if (selectedDepartments.length === 0) {
+      setFilteredUsers(users);
+    } else {
+      const filtered = users.filter(user =>
+        user.department && selectedDepartments.includes(user.department.id)
+      );
+      setFilteredUsers(filtered);
+    }
+  }, [selectedDepartments, users]);
 
   // Re-group tasks when departments are loaded
   useEffect(() => {
@@ -161,6 +189,18 @@ export default function HODDashboard() {
       setUserDepartments(userDepts);
     }
   }, [departments, myTasks]);
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await fetch('/api/departments');
+      if (response.ok) {
+        const data = await response.json();
+        setDepartments(data.departments || []);
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+    }
+  };
 
   const fetchTasks = async () => {
     try {
@@ -194,21 +234,17 @@ export default function HODDashboard() {
     }
   };
 
-  const fetchDepartments = async () => {
-    try {
-      const response = await fetch('/api/departments');
-      if (response.ok) {
-        const data = await response.json();
-        setDepartments(data.departments || []);
-      }
-    } catch (error) {
-      console.error('Error fetching departments:', error);
-    }
-  };
-
   const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/users/all-users');
+      const response = await fetch('/api/users/all-users', {
+        headers: {
+          'x-current-user': JSON.stringify(user ? { 
+            role: user.role, 
+            email: user.email,
+            id: user.id 
+          } : { role: 'HOD', email: 'hod@example.com' })
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         setUsers(data.users || []);
@@ -338,11 +374,6 @@ export default function HODDashboard() {
     }
   };
 
-  const filteredUsers = users.filter(u => {
-    if (selectedDepartments.length === 0) return true;
-    return selectedDepartments.includes(u.department?.id || '');
-  }).filter(u => ['TEACHER', 'PROFESSOR', 'COORDINATOR'].includes(u.role));
-
   const handleUserSelect = (userId: string) => {
     setNewTask(prev => ({
       ...prev,
@@ -379,7 +410,15 @@ export default function HODDashboard() {
           priority: 'MEDIUM',
           dueAt: '',
           assignedTo: [],
-          requiredDeliverables: []
+          assignments: [],
+          departments: [],
+          requiredDeliverables: [
+            {
+              type: 'PDF',
+              label: '',
+              optional: false
+            }
+          ]
         });
         setSelectedDepartments([]);
       } else {

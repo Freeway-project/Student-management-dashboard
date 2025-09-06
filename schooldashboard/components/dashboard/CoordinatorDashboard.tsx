@@ -219,7 +219,15 @@ export default function CoordinatorDashboard() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/users/all-users');
+      const response = await fetch('/api/users/all-users', {
+        headers: {
+          'x-current-user': JSON.stringify(user ? { 
+            role: user.role, 
+            email: user.email,
+            id: user.id 
+          } : { role: 'COORDINATOR', email: 'coordinator@example.com' })
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         setUsers(data.users || []);
