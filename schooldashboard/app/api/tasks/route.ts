@@ -260,21 +260,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Get user's departments (both legacy and new structure)
-      const userDepartmentIds = [];
-      
-      // Legacy department support
-      if (user.departmentId) {
-        userDepartmentIds.push(user.departmentId);
-      }
-      
-      // New multi-department support
-      if (user.departmentRoles && user.departmentRoles.length > 0) {
-        user.departmentRoles.forEach((deptRole: any) => {
-          if (!userDepartmentIds.includes(deptRole.departmentId)) {
-            userDepartmentIds.push(deptRole.departmentId);
-          }
-        });
-      }
+      const userDepartmentIds = user.departmentRoles?.map((deptRole: any) => deptRole.departmentId) || [];
 
       // Get users in HOD's departments
       const departmentUsers = await User.find({
@@ -341,21 +327,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Get user's departments (both legacy and new structure)
-      const userDepartmentIds = [];
-      
-      // Legacy department support
-      if (user.departmentId) {
-        userDepartmentIds.push(user.departmentId);
-      }
-      
-      // New multi-department support
-      if (user.departmentRoles && user.departmentRoles.length > 0) {
-        user.departmentRoles.forEach((deptRole: any) => {
-          if (!userDepartmentIds.includes(deptRole.departmentId)) {
-            userDepartmentIds.push(deptRole.departmentId);
-          }
-        });
-      }
+      const userDepartmentIds = user.departmentRoles?.map((deptRole: any) => deptRole.departmentId) || [];
 
       // Get professors in coordinator's departments
       const departmentProfessors = await User.find({
