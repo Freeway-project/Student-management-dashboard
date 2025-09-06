@@ -1,10 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Filter, Plus, User } from 'lucide-react';
+import { Building, Users, AlertCircle, Filter, UserPlus, CheckSquare, Plus, User } from 'lucide-react';
 import { toast } from 'sonner';
+import Link from 'next/link';
+import TaskFilters from '@/components/tasks/TaskFilters';
+import TaskList from '@/components/tasks/TaskList';
+import TaskDetail from '@/components/tasks/TaskDetail';
+import CreateTaskForm from '@/components/tasks/CreateTaskForm';
 import { useAuth } from '@/lib/auth-context';
 import StatsOverview from './shared/StatsOverview';
 import TasksManagement from './shared/TasksManagement';
@@ -55,12 +61,82 @@ interface Task {
 
 export default function ChairmanDashboard() {
   const { user: currentUser } = useAuth();
-  const router = useRouter();
-
+  
   const [departments, setDepartments] = useState<Department[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [tasksLoading, setTasksLoading] = useState(true);
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  const [roleFilter, setRoleFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
+
+  // Task filter states
+  const [taskStatusFilter, setTaskStatusFilter] = useState('');
+  const [taskPriorityFilter, setTaskPriorityFilter] = useState('');
+  const [taskSearchTerm, setTaskSearchTerm] = useState('');
+
+  // Task detail view
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [userDetailContext, setUserDetailContext] = useState<'users' | 'department' | null>(null);
+  
+  // Edit user states
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [updatingUser, setUpdatingUser] = useState(false);
+  const [editUserData, setEditUserData] = useState({
+    name: '',
+    email: '',
+    role: '',
+    departmentId: '',
+    departmentRoles: [] as Array<{ departmentId: string; roles: string[] }>
+  });
+
+  const [newDepartment, setNewDepartment] = useState({
+    name: '',
+    code: '',
+    description: ''
+  });
+  const [creating, setCreating] = useState(false);
+
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: '',
+    departmentId: ''
+  });
+  const [creatingUser, setCreatingUser] = useState(false);
+
+  // Task creation states
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    priority: 'MEDIUM' as const,
+    dueDate: '',
+    assignments: [] as Array<{
+      userId: string;
+      departmentId: string;
+      assignedRole: string;
+      userName: string;
+      departmentName: string;
+      departmentCode: string;
+    }>,
+    departments: [] as string[],
+    requiredDeliverables: [
+      {
+        type: 'PDF',
+        label: '',
+        optional: false
+      }
+    ]
+  });
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [creatingTask, setCreatingTask] = useState(false);
 
   const fetchDepartments = async () => {
     try {
@@ -77,8 +153,13 @@ export default function ChairmanDashboard() {
   };
 
   const fetchUsers = async () => {
+    setUsersLoading(true);
     try {
-      const response = await fetch('/api/users/all-users', {
+      const params = new URLSearchParams();
+      if (roleFilter) params.append('role', roleFilter);
+      if (searchTerm) params.append('search', searchTerm);
+      
+      const response = await fetch(`/api/users/all-users?${params}`, {
         headers: {
           'x-current-user': JSON.stringify({ role: 'PROGRAM_ADMIN', email: 'admin@example.com' })
         }
@@ -87,17 +168,22 @@ export default function ChairmanDashboard() {
       if (response.ok) {
         const data = await response.json();
         setUsers(data.users);
+        setFilteredUsers(data.users);
       } else {
         toast.error('Failed to fetch users');
       }
     } catch (error) {
       toast.error('Error fetching users');
+    } finally {
+      setUsersLoading(false);
     }
   };
 
   const fetchTasks = async () => {
+    setTasksLoading(true);
     try {
-      const response = await fetch(`/api/tasks?userId=${currentUser?.email}&role=${currentUser?.role}`);
+      const currentUser = { role: 'CHAIRMAN', email: 'chairman@example.com' };
+      const response = await fetch(`/api/tasks?userId=${currentUser.email}&role=${currentUser.role}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -107,37 +193,422 @@ export default function ChairmanDashboard() {
       }
     } catch (error) {
       toast.error('Error fetching tasks');
+    } finally {
+      setTasksLoading(false);
+    }
+  };
+
+  const handleCreateDepartment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      const response = await fetch('/api/departments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newDepartment)
+      });
+      
+      if (response.ok) {
+        const createdDept = await response.json();
+        setDepartments([...departments, createdDept]);
+        setNewDepartment({ name: '', code: '', description: '' });
+        toast.success(`Department "${createdDept.name}" created successfully!`);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to create department');
+      }
+    } catch (error) {
+      toast.error('Error creating department');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingUser(true);
+    try {
+      const response = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-current-user': JSON.stringify({ role: 'PROGRAM_ADMIN', email: 'admin@example.com' })
+        },
+        body: JSON.stringify(newUser)
+      });
+      
+      if (response.ok) {
+        const createdUser = await response.json();
+        setUsers([...users, createdUser]);
+        setNewUser({ name: '', email: '', password: '', role: '', departmentId: '' });
+        toast.success(`User "${createdUser.name}" created successfully!`);
+      } else {
+        const error = await response.text();
+        toast.error(error || 'Failed to create user');
+      }
+    } catch (error) {
+      toast.error('Error creating user');
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setUsers(users.filter(user => user.id !== userId));
+        toast.success('User deleted successfully!');
+      } else {
+        const error = await response.text();
+        toast.error(error || 'Failed to delete user');
+      }
+    } catch (error) {
+      toast.error('Error deleting user');
+    }
+  };
+
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    const userWithRoles = user as any;
+    setEditUserData({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      departmentId: user.department?.id || '',
+      departmentRoles: userWithRoles.departmentRoles || [] // Load existing department roles
+    });
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    
+    setUpdatingUser(true);
+    try {
+      const response = await fetch(`/api/users/${editingUser.id}`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-current-user': JSON.stringify({ role: 'CHAIRMAN', email: 'chairman@example.com' })
+        },
+        body: JSON.stringify({
+          name: editUserData.name,
+          email: editUserData.email,
+          role: editUserData.role,
+          departmentId: editUserData.departmentId,
+          departmentRoles: editUserData.departmentRoles.filter(dr => dr.roles.length > 0)
+        })
+      });
+      
+      if (response.ok) {
+        const updatedUser = await response.json();
+        setUsers(users.map(user => user.id === editingUser.id ? updatedUser : user));
+        setEditingUser(null);
+        setEditUserData({ name: '', email: '', role: '', departmentId: '', departmentRoles: [] });
+        toast.success(`User "${updatedUser.name}" updated successfully!`);
+      } else {
+        const error = await response.text();
+        toast.error(error || 'Failed to update user');
+      }
+    } catch (error) {
+      toast.error('Error updating user');
+    } finally {
+      setUpdatingUser(false);
+    }
+  };
+
+  const addDepartmentRole = () => {
+    setEditUserData({
+      ...editUserData,
+      departmentRoles: [...editUserData.departmentRoles, { departmentId: '', roles: [] }]
+    });
+  };
+
+  const removeDepartmentRole = (index: number) => {
+    setEditUserData({
+      ...editUserData,
+      departmentRoles: editUserData.departmentRoles.filter((_, i) => i !== index)
+    });
+  };
+
+  const updateDepartmentRole = (index: number, field: 'departmentId' | 'roles', value: any) => {
+    const updated = [...editUserData.departmentRoles];
+    if (field === 'roles') {
+      // Handle role toggle
+      const role = value;
+      const currentRoles = updated[index].roles;
+      if (currentRoles.includes(role)) {
+        updated[index].roles = currentRoles.filter(r => r !== role);
+      } else {
+        updated[index].roles = [...currentRoles, role];
+      }
+    } else {
+      updated[index][field] = value;
+    }
+    setEditUserData({ ...editUserData, departmentRoles: updated });
+  };
+
+  const handleUserSelect = (userId: string) => {
+    // No-op: User selection is now handled directly in CreateTaskForm component
+    // through the assignments array structure
+  };
+
+  const handleCreateTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingTask(true);
+
+    try {
+      if (!currentUser) {
+        toast.error('You must be logged in to create a task');
+        setCreatingTask(false);
+        return;
+      }
+
+      const taskData = {
+        title: newTask.title,
+        description: newTask.description,
+        instructions: newTask.description,
+        priority: newTask.priority,
+        dueAt: newTask.dueDate ? new Date(newTask.dueDate).toISOString() : undefined,
+        assignments: newTask.assignments.map(assignment => ({
+          userId: assignment.userId,
+          departmentId: assignment.departmentId,
+          assignedRole: assignment.assignedRole
+        })),
+        assignedBy: currentUser.id,
+        departmentId: selectedDepartments.length > 0 ? selectedDepartments[0] : undefined,
+        requiredDeliverables: newTask.requiredDeliverables
+      };
+
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskData)
+      });
+
+      if (response.ok) {
+        setNewTask({
+          title: '',
+          description: '',
+          priority: 'MEDIUM',
+          dueDate: '',
+          assignments: [],
+          departments: [],
+          requiredDeliverables: [
+            {
+              type: 'PDF',
+              label: '',
+              optional: false
+            }
+          ]
+        });
+        setSelectedDepartments([]);
+        toast.success('Task created successfully!');
+        fetchTasks();
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to create task');
+      }
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast.error('Error creating task');
+    } finally {
+      setCreatingTask(false);
     }
   };
 
   useEffect(() => {
-    setLoading(true);
     fetchDepartments();
     fetchUsers();
     fetchTasks();
   }, []);
 
   useEffect(() => {
-    if (!currentUser) return;
+    fetchUsers();
+  }, [roleFilter, searchTerm]);
 
-    const fetchData = async () => {
-      try {
-        const response = await fetch(`/api/tasks?userId=${currentUser.email}&role=${currentUser.role}`);
-        const data = await response.json();
-        setTasks(data);
-      } catch (error) {
-        console.error('Error fetching tasks:', error);
+  useEffect(() => {
+    // Filter users based on selected departments for task assignment
+    if (selectedDepartments.length === 0) {
+      setFilteredUsers(users);
+    } else {
+      const filtered = users.filter(user =>
+        user.department && selectedDepartments.includes(user.department.id)
+      );
+      setFilteredUsers(filtered);
+    }
+  }, [selectedDepartments, users]);
+
+  const filteredUsersForUserManagement = users.filter(user => {
+    const matchesRole = !roleFilter || user.role === roleFilter;
+    const matchesSearch = !searchTerm || user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDepartment = !departmentFilter || (user.department && user.department.id === departmentFilter);
+    
+    return matchesRole && matchesSearch && matchesDepartment;
+  });
+
+  const getDepartmentUsers = (departmentId: string) => {
+    return users.filter(user => user.department && user.department.id === departmentId);
+  };
+
+  const getDepartmentTasks = (departmentId: string) => {
+    return tasks.filter(task => task.departmentId === departmentId);
+  };
+
+  const getDepartmentDetails = (departmentId: string) => {
+    const dept = Array.isArray(departments) ? departments.find(d => d._id === departmentId) : null;
+    if (!dept) return null;
+    
+    const deptUsers = getDepartmentUsers(departmentId);
+    const deptTasks = getDepartmentTasks(departmentId);
+    
+    return {
+      ...dept,
+      users: deptUsers,
+      tasks: deptTasks,
+      stats: {
+        totalUsers: deptUsers.length,
+        totalTasks: deptTasks.length,
+        hods: deptUsers.filter(u => u.role === 'HOD').length,
+        coordinators: deptUsers.filter(u => u.role === 'COORDINATOR').length,
+        professors: deptUsers.filter(u => u.role === 'PROFESSOR').length,
+        activeTasks: deptTasks.filter(t => t.status !== 'SUBMITTED').length,
+        completedTasks: deptTasks.filter(t => t.status === 'SUBMITTED').length
       }
     };
+  };
 
-    fetchData();
-  }, [currentUser]);
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'URGENT': return 'bg-red-100 text-red-800';
+      case 'HIGH': return 'bg-orange-100 text-orange-800';
+      case 'MEDIUM': return 'bg-yellow-100 text-yellow-800';
+      case 'LOW': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'SUBMITTED': return 'bg-green-100 text-green-800';
+      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800';
+      case 'ASSIGNED': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getUserDetails = (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return null;
+
+    // Get tasks assigned to this user (check both legacy and new assignment formats)
+    const userTasks = tasks.filter(task => {
+      // Check legacy assignedTo field
+      const legacyAssigned = task.assignedTo?.some(assignee => assignee.id === userId);
+      // Check new assignments array
+      const newAssigned = task.assignments?.some(assignment => assignment.userId === userId);
+      return legacyAssigned || newAssigned;
+    });
+
+    // Get user's departments (both primary and additional)
+    const userDepartments: any[] = [];
+    
+    // Add primary department
+    if (user.department) {
+      userDepartments.push({
+        ...user.department,
+        roles: [user.role],
+        isPrimary: true
+      });
+    }
+
+    // Add additional departments from departmentRoles if available
+    const userWithRoles = user as any;
+    if (userWithRoles.departmentRoles) {
+      userWithRoles.departmentRoles.forEach((deptRole: any) => {
+        const dept = Array.isArray(departments) ? departments.find(d => d._id === deptRole.departmentId) : null;
+        if (dept && !userDepartments.some(ud => ud.id === dept._id)) {
+          userDepartments.push({
+            id: dept._id,
+            name: dept.name,
+            code: dept.code,
+            roles: deptRole.roles,
+            isPrimary: false
+          });
+        }
+      });
+    }
+
+    // GROUP TASKS BY DEPARTMENT
+    const tasksByDepartment = userDepartments.map(dept => ({
+      ...dept,
+      tasks: userTasks.filter(task =>
+        // Match tasks assigned to user in this specific department
+        task.assignments?.some(assignment =>
+          assignment.userId === userId &&
+          assignment.departmentId === dept.id
+        ) ||
+        // Fallback: legacy assignedTo + department match
+        (task.assignedTo?.some(assignee => assignee.id === userId) &&
+         task.departmentId === dept.id)
+      ),
+      taskStats: {
+        total: 0, // Will be calculated below
+        active: 0,
+        completed: 0
+      }
+    }));
+
+    // Calculate task stats for each department
+    tasksByDepartment.forEach(dept => {
+      dept.taskStats.total = dept.tasks.length;
+      dept.taskStats.active = dept.tasks.filter((t: Task) => t.status !== 'SUBMITTED').length;
+      dept.taskStats.completed = dept.tasks.filter((t: Task) => t.status === 'SUBMITTED').length;
+    });
+
+    return {
+      ...user,
+      tasks: userTasks,
+      departments: userDepartments,
+      tasksByDepartment,
+      stats: {
+        totalTasks: userTasks.length,
+        activeTasks: userTasks.filter(t => t.status !== 'SUBMITTED').length,
+        completedTasks: userTasks.filter(t => t.status === 'SUBMITTED').length,
+        urgentTasks: userTasks.filter(t => t.priority === 'URGENT').length,
+        totalDepartments: userDepartments.length
+      }
+    };
+  };
+
+  const filteredTasks = tasks.filter(task => {
+    const matchesStatus = !taskStatusFilter || task.status === taskStatusFilter;
+    const matchesPriority = !taskPriorityFilter || task.priority === taskPriorityFilter;
+    const matchesSearch = !taskSearchTerm ||
+      task.title.toLowerCase().includes(taskSearchTerm.toLowerCase()) ||
+      task.description.toLowerCase().includes(taskSearchTerm.toLowerCase());
+
+    return matchesStatus && matchesPriority && matchesSearch;
+  });
 
   return (
     <div className="flex-1  space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Chairman Dashboard</h2>
       </div>
+
+
 
       {notification && (
         <div className={`p-4 rounded-md flex items-center gap-2 ${
@@ -173,10 +644,13 @@ export default function ChairmanDashboard() {
         <TabsContent value="departments" className="space-y-4">
           {selectedUserId ? (
             <>
-              {/* User Detail View from Department */}
+              {/* User Detail View (from Department) */}
               <div className="flex items-center justify-between">
-                <Button variant="ghost" onClick={() => setSelectedUserId(null)} className="text-blue-600">
-                  ← Back to Department Users
+                <Button variant="ghost" onClick={() => {
+                  setSelectedUserId(null);
+                  setUserDetailContext(null);
+                }} className="text-blue-600">
+                  ← Back to Department
                 </Button>
                 <Button onClick={() => {fetchUsers(); fetchTasks();}} variant="outline" size="sm">
                   Refresh
@@ -277,7 +751,7 @@ export default function ChairmanDashboard() {
 
                       <TabsContent value="departments" className="space-y-4">
                         <div className="grid gap-4">
-                          {userDetails.departments.map((dept: any) => (
+                          {userDetails.tasksByDepartment.map((dept: any) => (
                             <Card key={dept.id}>
                               <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
@@ -291,30 +765,23 @@ export default function ChairmanDashboard() {
                               <CardContent>
                                 <div className="space-y-2">
                                   <div><strong>Roles:</strong> {dept.roles.join(', ')}</div>
-                                  {(() => {
-                                    const deptTasks = userDetails.tasks.filter((task: any) => 
-                                      task.departmentId === dept.id
-                                    );
-                                    return (
-                                      <div>
-                                        <strong>Department Tasks:</strong> {deptTasks.length}
-                                        {deptTasks.length > 0 && (
-                                          <div className="mt-2 space-y-1">
-                                            {deptTasks.slice(0, 3).map((task: any) => (
-                                              <div key={task._id} className="text-sm text-muted-foreground">
-                                                • {task.title} ({task.status})
-                                              </div>
-                                            ))}
-                                            {deptTasks.length > 3 && (
-                                              <div className="text-sm text-muted-foreground">
-                                                ... and {deptTasks.length - 3} more
-                                              </div>
-                                            )}
+                                  <div>
+                                    <strong>Department Tasks:</strong> {dept.tasks.length}
+                                    {dept.tasks.length > 0 && (
+                                      <div className="mt-2 space-y-1">
+                                        {dept.tasks.slice(0, 3).map((task: any) => (
+                                          <div key={task._id} className="text-sm text-muted-foreground">
+                                            • {task.title} ({task.status})
+                                          </div>
+                                        ))}
+                                        {dept.tasks.length > 3 && (
+                                          <div className="text-sm text-muted-foreground">
+                                            ... and {dept.tasks.length - 3} more
                                           </div>
                                         )}
                                       </div>
-                                    );
-                                  })()}
+                                    )}
+                                  </div>
                                 </div>
                               </CardContent>
                             </Card>
@@ -433,7 +900,10 @@ export default function ChairmanDashboard() {
                             <Card 
                               key={user.id} 
                               className="cursor-pointer hover:bg-gray-50 transition-colors"
-                              onClick={() => setSelectedUserId(user.id)}
+                              onClick={() => {
+                                setSelectedUserId(user.id);
+                                setUserDetailContext('department');
+                              }}
                             >
                               <CardContent className="pt-4">
                                 <div className="flex justify-between items-start">
@@ -672,7 +1142,10 @@ export default function ChairmanDashboard() {
             <>
               {/* User Detail View */}
               <div className="flex items-center justify-between">
-                <Button variant="ghost" onClick={() => setSelectedUserId(null)} className="text-blue-600">
+                <Button variant="ghost" onClick={() => {
+                  setSelectedUserId(null);
+                  setUserDetailContext(null);
+                }} className="text-blue-600">
                   ← Back to All Users
                 </Button>
                 <Button onClick={() => {fetchUsers(); fetchTasks();}} variant="outline" size="sm">
@@ -951,7 +1424,10 @@ export default function ChairmanDashboard() {
                 <Card 
                   key={user.id}
                   className="cursor-pointer hover:bg-gray-50 transition-colors"
-                  onClick={() => setSelectedUserId(user.id)}
+                  onClick={() => {
+                    setSelectedUserId(user.id);
+                    setUserDetailContext('users');
+                  }}
                 >
                   <CardContent className="pt-4">
                     <div className="flex justify-between items-start">
