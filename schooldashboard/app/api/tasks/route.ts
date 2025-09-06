@@ -260,7 +260,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Get user's departments (both legacy and new structure)
-      const userDepartmentIds = user.departmentRoles?.map((deptRole: any) => deptRole.departmentId) || [];
+      const userDepartmentIds: string[] = user.departmentRoles?.map((deptRole: any) => deptRole.departmentId) || [];
 
       // Get users in HOD's departments
       const departmentUsers = await User.find({
