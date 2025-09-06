@@ -18,15 +18,20 @@ export async function POST(request: NextRequest) {
       priority = "MEDIUM",
       dueAt,
       requiredDeliverables = [],
-      assignedTo, // Array of user IDs
+      assignedTo, // Array of user IDs (legacy)
+      assignments, // Array of assignment objects (new structure)
       assignedBy,
       departmentId 
     } = body;
 
+    // Support both new and legacy assignment structures
+    const hasNewAssignments = assignments && Array.isArray(assignments) && assignments.length > 0;
+    const hasLegacyAssignments = assignedTo && Array.isArray(assignedTo) && assignedTo.length > 0;
+
     // Validate required fields
-    if (!title || !description || !assignedBy || !assignedTo?.length) {
+    if (!title || !description || !assignedBy || (!hasNewAssignments && !hasLegacyAssignments)) {
       return NextResponse.json(
-        { error: 'Missing required fields: title, description, assignedBy, assignedTo' },
+        { error: 'Missing required fields: title, description, assignedBy, and either assignedTo or assignments' },
         { status: 400 }
       );
     }
@@ -48,16 +53,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Prepare assignee validation
+    let assigneeIds = [];
+    let assignmentData = [];
+
+    if (hasNewAssignments) {
+      // Extract user IDs from new assignments structure
+      assigneeIds = assignments.map(assignment => assignment.userId);
+      assignmentData = assignments;
+    } else {
+      // Use legacy assignedTo structure
+      assigneeIds = assignedTo;
+      assignmentData = assignedTo.map((userId: any) => ({
+        userId: userId,
+        departmentId: departmentId || null,
+        assignedRole: null // Will be populated from user's primary role
+      }));
+    }
+
     // Verify assignees exist
-    const assignees = await User.find({ _id: { $in: assignedTo } });
-    if (assignees.length !== assignedTo.length) {
+    const assignees = await User.find({ _id: { $in: assigneeIds } });
+    if (assignees.length !== assigneeIds.length) {
       return NextResponse.json(
         { error: 'One or more assignees not found' },
         { status: 404 }
       );
     }
 
-    // Validate requiredDeliverables
+    // Validate and filter requiredDeliverables
     if (!Array.isArray(requiredDeliverables)) {
       return NextResponse.json(
         { error: 'requiredDeliverables must be an array' },
@@ -65,17 +88,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Filter out deliverables with empty or invalid labels
+    const validDeliverables = requiredDeliverables.filter(deliverable => 
+      deliverable && 
+      deliverable.type && 
+      deliverable.label && 
+      deliverable.label.trim().length > 0
+    );
 
 
-    // Create the task
+
+    // Prepare assignments for the embedded structure
+    const taskAssignments = assignmentData.map((assignment: any) => {
+      const assignee = assignees.find(user => user._id.toString() === assignment.userId);
+      return {
+        userId: assignment.userId,
+        departmentId: assignment.departmentId || assignee.departmentId,
+        assignedRole: assignment.assignedRole || assignee.role,
+        assignedByUserId: assignedBy,
+        reviewerUserId: assignedBy,
+        status: "NOT_SUBMITTED"
+      };
+    });
+
+    // Create the task with embedded assignments
     const task = new Task({
       title,
       description,
       instructions,
       priority,
       dueAt: dueAt ? new Date(dueAt) : undefined,
-      requiredDeliverables,
-      assignedTo,
+      requiredDeliverables: validDeliverables,
+      assignedTo: assigneeIds, // Keep for backward compatibility
+      assignments: taskAssignments, // New embedded structure
       assignedBy,
       departmentId: departmentId || null,
       status: "ASSIGNED"
@@ -83,18 +128,18 @@ export async function POST(request: NextRequest) {
 
     await task.save();
 
-    // Create TaskAssignment records for each assignee
-    const taskAssignments = assignees.map(assignee => ({
+    // Create TaskAssignment records for each assignee (for backward compatibility)
+    const taskAssignmentRecords = taskAssignments.map((assignment: any) => ({
       taskId: task._id,
-      assigneeUserId: assignee._id,
+      assigneeUserId: assignment.userId,
       assignedByUserId: assignedBy,
-      assigneeRoleAtAssign: assignee.role,
+      assigneeRoleAtAssign: assignment.assignedRole,
       reviewerUserId: assignedBy,
-      departmentId: departmentId || assignee.departmentId,
+      departmentId: assignment.departmentId,
       status: "NOT_SUBMITTED"
     }));
 
-    await TaskAssignment.insertMany(taskAssignments);
+    await TaskAssignment.insertMany(taskAssignmentRecords);
 
     return NextResponse.json({
       success: true,
@@ -102,7 +147,17 @@ export async function POST(request: NextRequest) {
         id: task._id,
         title: task.title,
         status: task.status,
-        assignedTo: assignees.map(a => ({ id: a._id, name: a.name, role: a.role })),
+        assignedTo: assignees.map(a => ({ id: a._id, name: a.name, role: a.role })), // Legacy
+        assignments: taskAssignments.map((assignment: any) => {
+          const assignee = assignees.find(user => user._id.toString() === assignment.userId);
+          return {
+            userId: assignment.userId,
+            userName: assignee.name,
+            departmentId: assignment.departmentId,
+            assignedRole: assignment.assignedRole,
+            status: assignment.status
+          };
+        }),
         assignedBy: { id: assigner._id, name: assigner.name, role: assigner.role }
       }
     });
@@ -141,10 +196,65 @@ export async function GET(request: NextRequest) {
 
     if (role === 'CHAIRMAN' || role === 'VICE_CHAIRMAN') {
       console.log('Fetching tasks for role:', role);
-      tasks = await Task.find({})
-        .populate('assignedBy', 'name role')
-        .populate('assignedTo', 'name role')
-        .sort({ createdAt: -1 });
+      let rawTasks;
+      
+      try {
+        // Try to populate assignedTo with strictPopulate: false as backup
+        rawTasks = await Task.find({})
+          .populate('assignedBy', 'name role')
+          .populate({
+            path: 'assignedTo',
+            select: 'name email role',
+            options: { strictPopulate: false }
+          })
+          .sort({ createdAt: -1 });
+      } catch (populateError) {
+        console.log('AssignedTo population failed, fetching without it:', populateError);
+        // Fallback: fetch without assignedTo population
+        rawTasks = await Task.find({})
+          .populate('assignedBy', 'name role')
+          .sort({ createdAt: -1 });
+      }
+      
+      // Manually populate assignment user details and assignedTo if needed
+      tasks = await Promise.all(
+        rawTasks.map(async (task) => {
+          const taskObj = task.toObject();
+          
+          // Handle new assignments structure
+          if (taskObj.assignments && taskObj.assignments.length > 0) {
+            const userIds = taskObj.assignments.map((assignment: any) => assignment.userId);
+            const users = await User.find({ _id: { $in: userIds } }).select('name email role');
+            
+            taskObj.assignments = taskObj.assignments.map((assignment: any) => {
+              const user = users.find(u => u._id.toString() === assignment.userId.toString());
+              return {
+                ...assignment,
+                user: user ? { id: user._id, name: user.name, email: user.email, role: user.role } : null
+              };
+            });
+          }
+          
+          // Handle legacy assignedTo - manually populate if not already populated
+          if (taskObj.assignedTo && Array.isArray(taskObj.assignedTo) && taskObj.assignedTo.length > 0) {
+            // Check if assignedTo is already populated (has name property) or just ObjectIds
+            const firstAssignee = taskObj.assignedTo[0];
+            if (firstAssignee && !firstAssignee.name) {
+              // Not populated, manually populate
+              const assignedUserIds = taskObj.assignedTo;
+              const assignedUsers = await User.find({ _id: { $in: assignedUserIds } }).select('name email role');
+              taskObj.assignedTo = assignedUsers.map(user => ({
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+              }));
+            }
+          }
+          
+          return taskObj;
+        })
+      );
     } else if (role === 'HOD') {
       console.log('Fetching tasks for HOD');
       const user = await User.findById(userId);

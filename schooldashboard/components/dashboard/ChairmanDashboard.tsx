@@ -43,7 +43,13 @@ interface Task {
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   status: 'ASSIGNED' | 'IN_PROGRESS' | 'SUBMITTED';
   dueAt?: string;
-  assignedTo: User[];
+  assignedTo: User[]; // Legacy field for backward compatibility
+  assignments: Array<{
+    userId: string;
+    departmentId: string;
+    assignedRole: string;
+    status: string;
+  }>;
   assignedBy: User;
   departmentId?: string;
   requiredDeliverables: any[];
@@ -108,7 +114,14 @@ export default function ChairmanDashboard() {
     description: '',
     priority: 'MEDIUM' as const,
     dueDate: '',
-    assignedTo: [] as string[],
+    assignments: [] as Array<{
+      userId: string;
+      departmentId: string;
+      assignedRole: string;
+      userName: string;
+      departmentName: string;
+      departmentCode: string;
+    }>,
     departments: [] as string[],
     requiredDeliverables: [
       {
@@ -261,12 +274,13 @@ export default function ChairmanDashboard() {
 
   const handleEditUser = (user: User) => {
     setEditingUser(user);
+    const userWithRoles = user as any;
     setEditUserData({
       name: user.name,
       email: user.email,
       role: user.role,
       departmentId: user.department?.id || '',
-      departmentRoles: [] // Will be populated from user data if available
+      departmentRoles: userWithRoles.departmentRoles || [] // Load existing department roles
     });
   };
 
@@ -340,12 +354,8 @@ export default function ChairmanDashboard() {
   };
 
   const handleUserSelect = (userId: string) => {
-    setNewTask(prev => ({
-      ...prev,
-      assignedTo: prev.assignedTo.includes(userId)
-        ? prev.assignedTo.filter(id => id !== userId)
-        : [...prev.assignedTo, userId]
-    }));
+    // No-op: User selection is now handled directly in CreateTaskForm component
+    // through the assignments array structure
   };
 
   const handleCreateTask = async (e: React.FormEvent) => {
@@ -365,7 +375,11 @@ export default function ChairmanDashboard() {
         instructions: newTask.description,
         priority: newTask.priority,
         dueAt: newTask.dueDate ? new Date(newTask.dueDate).toISOString() : undefined,
-        assignedTo: newTask.assignedTo,
+        assignments: newTask.assignments.map(assignment => ({
+          userId: assignment.userId,
+          departmentId: assignment.departmentId,
+          assignedRole: assignment.assignedRole
+        })),
         assignedBy: currentUser.id,
         departmentId: selectedDepartments.length > 0 ? selectedDepartments[0] : undefined,
         requiredDeliverables: newTask.requiredDeliverables
@@ -385,7 +399,7 @@ export default function ChairmanDashboard() {
           description: '',
           priority: 'MEDIUM',
           dueDate: '',
-          assignedTo: [],
+          assignments: [],
           departments: [],
           requiredDeliverables: [
             {
@@ -495,10 +509,14 @@ export default function ChairmanDashboard() {
     const user = users.find(u => u.id === userId);
     if (!user) return null;
 
-    // Get tasks assigned to this user
-    const userTasks = tasks.filter(task => 
-      task.assignedTo.some(assignee => assignee.id === userId)
-    );
+    // Get tasks assigned to this user (check both legacy and new assignment formats)
+    const userTasks = tasks.filter(task => {
+      // Check legacy assignedTo field
+      const legacyAssigned = task.assignedTo?.some(assignee => assignee.id === userId);
+      // Check new assignments array
+      const newAssigned = task.assignments?.some(assignment => assignment.userId === userId);
+      return legacyAssigned || newAssigned;
+    });
 
     // Get user's departments (both primary and additional)
     const userDepartments: any[] = [];
@@ -683,6 +701,11 @@ export default function ChairmanDashboard() {
                                       }`}>
                                         {user.role}
                                       </span>
+                                      {(user as any).departmentRoles && (user as any).departmentRoles.length > 0 && (
+                                        <span className="px-2 py-1 text-xs rounded bg-orange-100 text-orange-800">
+                                          Multi
+                                        </span>
+                                      )}
                                     </div>
                                     <p className="text-sm text-muted-foreground">{user.email}</p>
                                     {user.phone && <p className="text-sm text-muted-foreground">Phone: {user.phone}</p>}
@@ -719,7 +742,7 @@ export default function ChairmanDashboard() {
                                   </div>
                                   <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
                                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                    <span>Assigned to: {task.assignedTo.length} users</span>
+                                    <span>Assigned to: {(task.assignments?.length || task.assignedTo?.length || 0)} assignment{(task.assignments?.length || task.assignedTo?.length || 0) !== 1 ? 's' : ''}</span>
                                     {task.dueAt && <span>Due: {new Date(task.dueAt).toLocaleDateString()}</span>}
                                   </div>
                                 </div>
@@ -1163,12 +1186,33 @@ export default function ChairmanDashboard() {
                           }`}>
                             {user.role}
                           </span>
+                          {(user as any).departmentRoles && (user as any).departmentRoles.length > 0 && (
+                            <span className="px-2 py-1 text-xs rounded bg-orange-100 text-orange-800">
+                              Multi
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground">{user.email}</p>
+                        {/* Show Primary Department */}
                         {user.department && (
-                          <p className="text-sm text-muted-foreground">
-                            Department: {user.department.name} ({user.department.code})
-                          </p>
+                          <div className="text-sm">
+                            <span className="font-medium text-blue-600">Primary:</span> {user.department.name} ({user.department.code}) - {user.role}
+                          </div>
+                        )}
+                        
+                        {/* Show Additional Department Roles */}
+                        {(user as any).departmentRoles && (user as any).departmentRoles.length > 0 && (
+                          <div className="text-sm space-y-1">
+                            <span className="font-medium text-green-600">Additional Assignments:</span>
+                            {(user as any).departmentRoles.map((deptRole: any, index: number) => {
+                              const dept = departments.find(d => d._id === deptRole.departmentId);
+                              return dept ? (
+                                <div key={index} className="text-xs text-muted-foreground ml-2">
+                                  • {dept.name} ({dept.code}) - {deptRole.roles.join(', ')}
+                                </div>
+                              ) : null;
+                            })}
+                          </div>
                         )}
                         {user.supervisor && (
                           <p className="text-sm text-muted-foreground">

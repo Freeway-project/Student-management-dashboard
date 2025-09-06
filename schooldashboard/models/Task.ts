@@ -57,6 +57,9 @@ const TaskSchema = new Schema(
     // Embedded assignments (one task → many assignees)
     assignments: { type: [AssignmentSchema], default: [] },
     
+    // Legacy assignedTo field for backward compatibility
+    assignedTo: [{ type: Types.ObjectId, ref: "User" }],
+    
     // Optional overall status
     status: { type: String, default: "ASSIGNED" },
     

@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     let users = await User.find(query)
       .populate('departmentId', 'name code')
       .populate('supervisorId', 'name email role')
-      .select('name email role status departmentId supervisorId lastLoginAt createdAt phone bio')
+      .select('name email role status departmentId supervisorId lastLoginAt createdAt phone bio departmentRoles')
       .sort({ role: 1, name: 1 });
 
     // Apply search filter (after fetching to handle populated fields)
@@ -110,7 +110,8 @@ export async function GET(request: NextRequest) {
         lastLoginAt: user.lastLoginAt,
         createdAt: user.createdAt,
         phone: user.phone,
-        bio: user.bio
+        bio: user.bio,
+        departmentRoles: user.departmentRoles || []
       })),
       stats,
       filters: {

@@ -144,48 +144,126 @@ const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
                             )}
                         </div>
 
-                        {/* User Selection */}
+                        {/* User Selection with Department Roles */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium">
-                                Assign to Users
+                                Assign to Users by Department & Role
                                 <span className="text-muted-foreground ml-2">
                                     ({selectedDepartments.length === 0 ? 'All' : 'Filtered by department'})
                                 </span>
                             </label>
-                            <div className="max-h-64 overflow-y-auto border rounded-md p-2">
-                                <div className="grid gap-2">
-                                    {filteredUsers.map((user) => (
-                                        <div
-                                            key={user.id}
-                                            className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                id={`user-${user.id}`}
-                                                checked={newTask.assignedTo.includes(user.id)}
-                                                onChange={() => handleUserSelect(user.id)}
-                                                className="rounded border-gray-300"
-                                            />
-                                            <label htmlFor={`user-${user.id}`} className="flex-1 text-sm cursor-pointer">
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <div className="font-medium">{user.name}</div>
-                                                        <div className="text-muted-foreground text-xs">{user.email}</div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <Badge variant="outline" className="text-xs">
-                                                            {user.role}
+                            <div className="max-h-96 overflow-y-auto border rounded-md p-2">
+                                <div className="space-y-4">
+                                    {filteredUsers.map((user) => {
+                                        // Get all user's department-role combinations
+                                        const userDepartments: any[] = [];
+                                        
+                                        // Add primary department
+                                        if (user.department) {
+                                            userDepartments.push({
+                                                departmentId: user.department.id,
+                                                departmentName: user.department.name,
+                                                departmentCode: user.department.code,
+                                                roles: [user.role],
+                                                isPrimary: true
+                                            });
+                                        }
+                                        
+                                        // Add additional departments from departmentRoles
+                                        if ((user as any).departmentRoles) {
+                                            (user as any).departmentRoles.forEach((deptRole: any) => {
+                                                const dept = departments.find(d => d._id === deptRole.departmentId);
+                                                if (dept && !userDepartments.some(ud => ud.departmentId === dept._id)) {
+                                                    userDepartments.push({
+                                                        departmentId: dept._id,
+                                                        departmentName: dept.name,
+                                                        departmentCode: dept.code,
+                                                        roles: deptRole.roles,
+                                                        isPrimary: false
+                                                    });
+                                                }
+                                            });
+                                        }
+
+                                        return (
+                                            <div key={user.id} className="border rounded-lg p-3 bg-gray-50">
+                                                <div className="font-medium text-sm mb-2 flex items-center gap-2">
+                                                    {user.name}
+                                                    <span className="text-xs text-muted-foreground">({user.email})</span>
+                                                    {userDepartments.length > 1 && (
+                                                        <Badge variant="outline" className="text-xs bg-orange-100">
+                                                            Multi
                                                         </Badge>
-                                                        {user.department && (
-                                                            <Badge variant="outline" className="text-xs">
-                                                                {user.department.name}
-                                                            </Badge>
-                                                        )}
-                                                    </div>
+                                                    )}
                                                 </div>
-                                            </label>
-                                        </div>
-                                    ))}
+                                                
+                                                <div className="space-y-2">
+                                                    {userDepartments.map((userDept, deptIndex) => (
+                                                        <div key={`${user.id}-${userDept.departmentId}`} className="ml-2">
+                                                            <div className="text-xs font-medium text-blue-600 mb-1">
+                                                                {userDept.departmentName} ({userDept.departmentCode})
+                                                                {userDept.isPrimary && <span className="ml-1 text-blue-500">Primary</span>}
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-2 ml-2">
+                                                                {userDept.roles.map((role: string) => {
+                                                                    const assignmentKey = `${user.id}-${userDept.departmentId}-${role}`;
+                                                                    const isSelected = newTask.assignments && newTask.assignments.some((assignment: any) => 
+                                                                        assignment.userId === user.id && 
+                                                                        assignment.departmentId === userDept.departmentId && 
+                                                                        assignment.assignedRole === role
+                                                                    );
+                                                                    
+                                                                    return (
+                                                                        <label key={assignmentKey} className="flex items-center space-x-1 cursor-pointer">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={isSelected}
+                                                                                onChange={() => {
+                                                                                    const currentAssignments = newTask.assignments || [];
+                                                                                    const existingIndex = currentAssignments.findIndex((assignment: any) => 
+                                                                                        assignment.userId === user.id && 
+                                                                                        assignment.departmentId === userDept.departmentId && 
+                                                                                        assignment.assignedRole === role
+                                                                                    );
+                                                                                    
+                                                                                    let updatedAssignments;
+                                                                                    if (existingIndex >= 0) {
+                                                                                        // Remove assignment
+                                                                                        updatedAssignments = currentAssignments.filter((_: any, index: number) => index !== existingIndex);
+                                                                                    } else {
+                                                                                        // Add assignment
+                                                                                        updatedAssignments = [...currentAssignments, {
+                                                                                            userId: user.id,
+                                                                                            departmentId: userDept.departmentId,
+                                                                                            assignedRole: role,
+                                                                                            userName: user.name,
+                                                                                            departmentName: userDept.departmentName,
+                                                                                            departmentCode: userDept.departmentCode
+                                                                                        }];
+                                                                                    }
+                                                                                    
+                                                                                    setNewTask({ ...newTask, assignments: updatedAssignments });
+                                                                                }}
+                                                                                className="rounded border-gray-300"
+                                                                            />
+                                                                            <span className={`text-xs px-2 py-1 rounded ${
+                                                                                role === 'HOD' ? 'bg-purple-100 text-purple-800' :
+                                                                                role === 'PROFESSOR' ? 'bg-blue-100 text-blue-800' :
+                                                                                role === 'COORDINATOR' ? 'bg-green-100 text-green-800' :
+                                                                                'bg-gray-100 text-gray-800'
+                                                                            }`}>
+                                                                                {role}
+                                                                            </span>
+                                                                        </label>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                     {filteredUsers.length === 0 && (
                                         <div className="text-center text-muted-foreground py-4">
                                             {selectedDepartments.length === 0
@@ -196,6 +274,34 @@ const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
                                 </div>
                             </div>
                         </div>
+                        
+                        {/* Show Selected Assignments Summary */}
+                        {newTask.assignments && newTask.assignments.length > 0 && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Selected Assignments ({newTask.assignments.length})</label>
+                                <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                                    <div className="space-y-1">
+                                        {newTask.assignments.map((assignment: any, index: number) => (
+                                            <div key={index} className="text-sm flex items-center justify-between">
+                                                <span>
+                                                    <strong>{assignment.userName}</strong> - {assignment.assignedRole} at {assignment.departmentName} ({assignment.departmentCode})
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const updatedAssignments = newTask.assignments.filter((_: any, i: number) => i !== index);
+                                                        setNewTask({ ...newTask, assignments: updatedAssignments });
+                                                    }}
+                                                    className="text-red-500 hover:text-red-700 ml-2"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Deliverable Upload */}

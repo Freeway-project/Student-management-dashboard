@@ -187,12 +187,13 @@ export default function ViceChairmanDashboard() {
 
   const handleEditUser = (user: User) => {
     setEditingUser(user);
+    const userWithRoles = user as any;
     setEditUserData({
       name: user.name,
       email: user.email,
       role: user.role,
       departmentId: user.department?.id || '',
-      departmentRoles: [] // Will be populated from user data if available
+      departmentRoles: userWithRoles.departmentRoles || [] // Load existing department roles
     });
   };
 
@@ -628,9 +629,131 @@ export default function ViceChairmanDashboard() {
         </TabsContent>
 
         <TabsContent value="users" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium">User Management</h3>
-            <div className="flex gap-2">
+          {selectedUserId ? (
+            <>
+              {/* User Detail View */}
+              <div className="flex items-center justify-between">
+                <Button variant="ghost" onClick={() => setSelectedUserId(null)} className="text-blue-600">
+                  ← Back to All Users
+                </Button>
+                <Button onClick={() => fetchUsers()} variant="outline" size="sm">
+                  Refresh
+                </Button>
+              </div>
+
+              {(() => {
+                const userDetails = getUserDetails(selectedUserId);
+                if (!userDetails) return <div>User not found</div>;
+
+                return (
+                  <div className="space-y-6">
+                    {/* User Header */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-2xl flex items-center gap-2">
+                          <User className="h-6 w-6" />
+                          {userDetails.name}
+                        </CardTitle>
+                        <CardDescription className="text-lg">
+                          {userDetails.role} • {userDetails.email}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-purple-600">{userDetails.stats.totalDepartments}</div>
+                            <div className="text-sm text-muted-foreground">Departments</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-blue-600">{userDetails.departments.filter((d: any) => d.isPrimary).length}</div>
+                            <div className="text-sm text-muted-foreground">Primary Roles</div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* User Detail Tabs */}
+                    <Tabs defaultValue="overview" className="space-y-4">
+                      <TabsList>
+                        <TabsTrigger value="overview">Overview</TabsTrigger>
+                        <TabsTrigger value="departments">Departments</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="overview" className="space-y-4">
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <Card>
+                            <CardHeader>
+                              <CardTitle>Personal Information</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                              <div><strong>Name:</strong> {userDetails.name}</div>
+                              <div><strong>Email:</strong> {userDetails.email}</div>
+                              <div><strong>Role:</strong> {userDetails.role}</div>
+                              {userDetails.phone && <div><strong>Phone:</strong> {userDetails.phone}</div>}
+                              {userDetails.bio && <div><strong>Bio:</strong> {userDetails.bio}</div>}
+                              <div><strong>Joined:</strong> {new Date(userDetails.createdAt).toLocaleDateString()}</div>
+                              {userDetails.lastLoginAt && (
+                                <div><strong>Last Login:</strong> {new Date(userDetails.lastLoginAt).toLocaleDateString()}</div>
+                              )}
+                            </CardContent>
+                          </Card>
+                          
+                          <Card>
+                            <CardHeader>
+                              <CardTitle>Department Summary</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                              <div className="flex justify-between">
+                                <span>Total Departments:</span>
+                                <span className="font-medium">{userDetails.stats.totalDepartments}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Primary Roles:</span>
+                                <span className="font-medium text-blue-600">{userDetails.departments.filter((d: any) => d.isPrimary).length}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Additional Roles:</span>
+                                <span className="font-medium text-green-600">{userDetails.departments.filter((d: any) => !d.isPrimary).length}</span>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="departments" className="space-y-4">
+                        <div className="grid gap-4">
+                          {userDetails.departments.map((dept: any) => (
+                            <Card key={dept.id}>
+                              <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                  <Building className="h-4 w-4" />
+                                  {dept.name} ({dept.code})
+                                  {dept.isPrimary && (
+                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Primary</span>
+                                  )}
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-2">
+                                  <div><strong>Roles:</strong> {dept.roles.join(', ')}</div>
+                                  <div><strong>Status:</strong> {dept.isPrimary ? 'Primary Department' : 'Additional Assignment'}</div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                );
+              })()}
+            </>
+          ) : (
+            <>
+              {/* User List View */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">User Management</h3>
+                <div className="flex gap-2">
               <select 
                 value={departmentFilter} 
                 onChange={(e) => setDepartmentFilter(e.target.value)}
@@ -677,7 +800,12 @@ export default function ViceChairmanDashboard() {
                     <div className="flex justify-between items-start">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <h4 className="font-semibold">{user.name}</h4>
+                          <h4 
+                            className="font-semibold text-blue-600 hover:text-blue-800 cursor-pointer"
+                            onClick={() => setSelectedUserId(user.id)}
+                          >
+                            {user.name}
+                          </h4>
                           <span className={`px-2 py-1 text-xs rounded ${
                             user.role === 'HOD' ? 'bg-purple-100 text-purple-800' :
                             user.role === 'PROFESSOR' ? 'bg-blue-100 text-blue-800' :
@@ -686,12 +814,33 @@ export default function ViceChairmanDashboard() {
                           }`}>
                             {user.role}
                           </span>
+                          {(user as any).departmentRoles && (user as any).departmentRoles.length > 0 && (
+                            <span className="px-2 py-1 text-xs rounded bg-orange-100 text-orange-800">
+                              Multi
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground">{user.email}</p>
+                        {/* Show Primary Department */}
                         {user.department && (
-                          <p className="text-sm text-muted-foreground">
-                            Department: {user.department.name} ({user.department.code})
-                          </p>
+                          <div className="text-sm">
+                            <span className="font-medium text-blue-600">Primary:</span> {user.department.name} ({user.department.code}) - {user.role}
+                          </div>
+                        )}
+                        
+                        {/* Show Additional Department Roles */}
+                        {(user as any).departmentRoles && (user as any).departmentRoles.length > 0 && (
+                          <div className="text-sm space-y-1">
+                            <span className="font-medium text-green-600">Additional Assignments:</span>
+                            {(user as any).departmentRoles.map((deptRole: any, index: number) => {
+                              const dept = departments.find(d => d._id === deptRole.departmentId);
+                              return dept ? (
+                                <div key={index} className="text-xs text-muted-foreground ml-2">
+                                  • {dept.name} ({dept.code}) - {deptRole.roles.join(', ')}
+                                </div>
+                              ) : null;
+                            })}
+                          </div>
                         )}
                         {user.supervisor && (
                           <p className="text-sm text-muted-foreground">
@@ -720,6 +869,8 @@ export default function ViceChairmanDashboard() {
                 </Card>
               ))}
             </div>
+          )}
+            </>
           )}
         </TabsContent>
 
