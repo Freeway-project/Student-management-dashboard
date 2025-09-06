@@ -31,7 +31,7 @@ export async function GET() {
   try {
     await connectDB();
     const departments = await Department.find().sort({ name: 1 });
-    return NextResponse.json(departments);
+    return NextResponse.json({ departments });
   } catch (error) {
     console.error('List departments error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

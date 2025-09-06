@@ -17,6 +17,14 @@ interface User {
   role: string;
 }
 
+// Helper function to get task assignees from both structures
+const getTaskAssignees = (task: any): User[] => {
+  if (task.assignments?.length > 0) {
+    return task.assignments.map((a: any) => a.user || { id: a.userId, name: 'Unknown', role: 'Unknown' });
+  }
+  return task.assignedTo || [];
+};
+
 const TaskList: React.FC<TaskListProps> = ({ tasks, departments, getPriorityColor, getStatusColor, onTaskClick }) => {
   return (
     <div className="grid gap-4">
@@ -57,19 +65,22 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, departments, getPriorityColo
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {task.assignedTo && task.assignedTo.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Assigned to: </span>
-                  <div className="flex gap-1">
-                    {task.assignedTo.map((user: User, index: number) => (
-                      <Badge key={user.id || `user-${index}`} variant="outline">
-                        {user.name} ({user.role})
-                      </Badge>
-                    ))}
+              {(() => {
+                const assignees = getTaskAssignees(task);
+                return assignees.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">Assigned to: </span>
+                    <div className="flex gap-1">
+                      {assignees.map((user: User, index: number) => (
+                        <Badge key={user.id || `user-${index}`} variant="outline">
+                          {user.name} ({user.role})
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
               {task.assignedBy && (
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />

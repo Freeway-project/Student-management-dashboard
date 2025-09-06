@@ -547,10 +547,38 @@ export default function ChairmanDashboard() {
       });
     }
 
+    // GROUP TASKS BY DEPARTMENT
+    const tasksByDepartment = userDepartments.map(dept => ({
+      ...dept,
+      tasks: userTasks.filter(task =>
+        // Match tasks assigned to user in this specific department
+        task.assignments?.some(assignment =>
+          assignment.userId === userId &&
+          assignment.departmentId === dept.id
+        ) ||
+        // Fallback: legacy assignedTo + department match
+        (task.assignedTo?.some(assignee => assignee.id === userId) &&
+         task.departmentId === dept.id)
+      ),
+      taskStats: {
+        total: 0, // Will be calculated below
+        active: 0,
+        completed: 0
+      }
+    }));
+
+    // Calculate task stats for each department
+    tasksByDepartment.forEach(dept => {
+      dept.taskStats.total = dept.tasks.length;
+      dept.taskStats.active = dept.tasks.filter((t: Task) => t.status !== 'SUBMITTED').length;
+      dept.taskStats.completed = dept.tasks.filter((t: Task) => t.status === 'SUBMITTED').length;
+    });
+
     return {
       ...user,
       tasks: userTasks,
       departments: userDepartments,
+      tasksByDepartment,
       stats: {
         totalTasks: userTasks.length,
         activeTasks: userTasks.filter(t => t.status !== 'SUBMITTED').length,
@@ -1024,45 +1052,76 @@ export default function ChairmanDashboard() {
 
                       <TabsContent value="departments" className="space-y-4">
                         <div className="grid gap-4">
-                          {userDetails.departments.map((dept: any) => (
+                          {userDetails.tasksByDepartment.map((dept: any) => (
                             <Card key={dept.id}>
                               <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                   <Building className="h-4 w-4" />
-                                  {dept.name} ({dept.code})
+                                  {dept.name} ({dept.code}) - Tasks ({dept.tasks.length})
                                   {dept.isPrimary && (
                                     <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Primary</span>
                                   )}
                                 </CardTitle>
+                                <CardDescription>
+                                  {dept.taskStats.active} active • {dept.taskStats.completed} completed
+                                </CardDescription>
                               </CardHeader>
                               <CardContent>
-                                <div className="space-y-2">
+                                <div className="space-y-4">
                                   <div><strong>Roles:</strong> {dept.roles.join(', ')}</div>
-                                  {/* Show department-specific tasks */}
-                                  {(() => {
-                                    const deptTasks = userDetails.tasks.filter((task: any) => 
-                                      task.departmentId === dept.id
-                                    );
-                                    return (
-                                      <div>
-                                        <strong>Department Tasks:</strong> {deptTasks.length}
-                                        {deptTasks.length > 0 && (
-                                          <div className="mt-2 space-y-1">
-                                            {deptTasks.slice(0, 3).map((task: any) => (
-                                              <div key={task._id} className="text-sm text-muted-foreground">
-                                                • {task.title} ({task.status})
+                                  
+                                  {/* Task Statistics */}
+                                  <div className="grid grid-cols-3 gap-4 text-sm">
+                                    <div className="text-center p-2 bg-blue-50 rounded">
+                                      <div className="font-medium text-blue-700">{dept.taskStats.total}</div>
+                                      <div className="text-blue-600">Total</div>
+                                    </div>
+                                    <div className="text-center p-2 bg-orange-50 rounded">
+                                      <div className="font-medium text-orange-700">{dept.taskStats.active}</div>
+                                      <div className="text-orange-600">Active</div>
+                                    </div>
+                                    <div className="text-center p-2 bg-green-50 rounded">
+                                      <div className="font-medium text-green-700">{dept.taskStats.completed}</div>
+                                      <div className="text-green-600">Completed</div>
+                                    </div>
+                                  </div>
+
+                                  {/* Department-specific tasks */}
+                                  {dept.tasks.length > 0 && (
+                                    <div className="space-y-2">
+                                      <strong>Recent Tasks:</strong>
+                                      <div className="space-y-2">
+                                        {dept.tasks.slice(0, 5).map((task: any) => (
+                                          <div key={task._id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                            <div className="flex-1">
+                                              <div className="font-medium text-sm">{task.title}</div>
+                                              <div className="text-xs text-muted-foreground">
+                                                Priority: {task.priority} • Due: {task.dueAt ? new Date(task.dueAt).toLocaleDateString() : 'No due date'}
                                               </div>
-                                            ))}
-                                            {deptTasks.length > 3 && (
-                                              <div className="text-sm text-muted-foreground">
-                                                ... and {deptTasks.length - 3} more
-                                              </div>
-                                            )}
+                                            </div>
+                                            <span className={`text-xs px-2 py-1 rounded ${
+                                              task.status === 'SUBMITTED' ? 'bg-green-100 text-green-800' :
+                                              task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                                              'bg-yellow-100 text-yellow-800'
+                                            }`}>
+                                              {task.status}
+                                            </span>
+                                          </div>
+                                        ))}
+                                        {dept.tasks.length > 5 && (
+                                          <div className="text-sm text-muted-foreground text-center">
+                                            ... and {dept.tasks.length - 5} more tasks
                                           </div>
                                         )}
                                       </div>
-                                    );
-                                  })()}
+                                    </div>
+                                  )}
+                                  
+                                  {dept.tasks.length === 0 && (
+                                    <div className="text-center py-4 text-muted-foreground">
+                                      No tasks assigned for this department
+                                    </div>
+                                  )}
                                 </div>
                               </CardContent>
                             </Card>

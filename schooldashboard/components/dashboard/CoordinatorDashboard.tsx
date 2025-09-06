@@ -29,7 +29,15 @@ interface Task {
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   status: 'ASSIGNED' | 'IN_PROGRESS' | 'SUBMITTED';
   dueAt?: string;
+  departmentId?: string;
   assignedTo: {_id: string; name: string; email: string; role: string }[];
+  assignments?: Array<{
+    userId: string;
+    departmentId: string;
+    assignedRole: string;
+    status: string;
+    user?: { id: string; name: string; email: string; role: string };
+  }>;
   assignedBy: { id: string; name: string; email: string; role: string };
   requiredDeliverables: Deliverable[];
   submissionMessage?: string;
@@ -57,12 +65,64 @@ export default function CoordinatorDashboard() {
   const [allTasks, setAllTasks] = useState<any[]>([]);
   const [myTasks, setMyTasks] = useState<any[]>([]);
   const [teamTasks, setTeamTasks] = useState<Task[]>([]);
+  const [tasksByDepartment, setTasksByDepartment] = useState<{[key: string]: Task[]}>({});
+  const [userDepartments, setUserDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<{ [key: string]: string | null }>({});
   const [submitting, setSubmitting] = useState(false);
   const [submissionMessage, setSubmissionMessage] = useState('');
   const [showCreateTask, setShowCreateTask] = useState(false);
+  
+  // Helper function to check if user is assigned to task
+  const isUserAssignedToTask = (task: Task, userId: string) => {
+    // Check new assignments structure
+    if (task.assignments && task.assignments.length > 0) {
+      return task.assignments.some((assignment: any) => assignment.userId === userId);
+    }
+    // Check legacy assignedTo structure
+    return task.assignedTo?.some(assignee => assignee._id === userId);
+  };
+
+  // Helper function to get task assignees
+  const getTaskAssignees = (task: Task) => {
+    if (task.assignments && task.assignments.length > 0) {
+      return task.assignments.map((assignment: any) => assignment.user || { name: 'Unknown', role: 'Unknown' });
+    }
+    return task.assignedTo || [];
+  };
+
+  // Helper function to group tasks by department
+  const groupTasksByDepartment = (tasks: Task[], departments: Department[]) => {
+    const grouped: {[key: string]: Task[]} = {};
+    
+    departments.forEach(dept => {
+      grouped[dept._id] = tasks.filter(task => {
+        // Check if task is assigned to this department
+        if (task.assignments && task.assignments.length > 0) {
+          return task.assignments.some((assignment: any) => assignment.departmentId === dept._id);
+        }
+        // Fallback to task's departmentId
+        return task.departmentId === dept._id;
+      });
+    });
+    
+    // Add tasks without department assignment
+    const unassignedTasks = tasks.filter(task => {
+      if (task.assignments && task.assignments.length > 0) {
+        return !task.assignments.some((assignment: any) => 
+          departments.some(dept => dept._id === assignment.departmentId)
+        );
+      }
+      return !departments.some(dept => dept._id === task.departmentId);
+    });
+    
+    if (unassignedTasks.length > 0) {
+      grouped['unassigned'] = unassignedTasks;
+    }
+    
+    return grouped;
+  };
   
   // Create task form state
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -87,6 +147,21 @@ export default function CoordinatorDashboard() {
     }
   }, [user]);
 
+  // Re-group tasks when departments are loaded
+  useEffect(() => {
+    if (departments.length > 0 && myTasks.length > 0) {
+      const groupedTasks = groupTasksByDepartment(myTasks, departments);
+      setTasksByDepartment(groupedTasks);
+      
+      // Set user's departments (for tabs)
+      const userDepts = departments.filter(dept => {
+        // Check if user has any tasks in this department
+        return groupedTasks[dept._id] && groupedTasks[dept._id].length > 0;
+      });
+      setUserDepartments(userDepts);
+    }
+  }, [departments, myTasks]);
+
   const fetchTasks = async () => {
     try {
       const response = await fetch(`/api/tasks?userId=${user?.id}&role=${user?.role}`);
@@ -106,15 +181,22 @@ export default function CoordinatorDashboard() {
         
         // Split tasks between "my tasks" (assigned to me) and "team tasks" (assigned by me to others)
         const myAssignedTasks = tasks.filter((task: Task) => 
-          task.assignedTo.some(assignee => assignee?._id === user?.id)
+          isUserAssignedToTask(task, user?.id || '')
         );
 
-        const teamAssignedTasks = tasks.filter((task: Task) => 
-          task.assignedTo.some(assignee => assignee.role === 'PROFESSOR' )
-        );
+        const teamAssignedTasks = tasks.filter((task: Task) => {
+          const assignees = getTaskAssignees(task);
+          return assignees.some((assignee: any) => assignee.role === 'PROFESSOR');
+        });
 
         setMyTasks(myAssignedTasks);
         setTeamTasks(teamAssignedTasks);
+        
+        // Group my tasks by department
+        if (departments.length > 0) {
+          const groupedTasks = groupTasksByDepartment(myAssignedTasks, departments);
+          setTasksByDepartment(groupedTasks);
+        }
       }
     } catch (error) {
       console.error('Error fetching tasks:', error);
@@ -482,6 +564,56 @@ export default function CoordinatorDashboard() {
                   <CheckSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground">No tasks assigned to you</p>
                 </div>
+              ) : userDepartments.length > 0 ? (
+                <Tabs defaultValue={userDepartments[0]?._id} className="w-full">
+                  <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${userDepartments.length + (tasksByDepartment['unassigned'] ? 1 : 0)}, 1fr)` }}>
+                    {userDepartments.map(dept => (
+                      <TabsTrigger key={dept._id} value={dept._id}>
+                        {dept.name} ({tasksByDepartment[dept._id]?.length || 0})
+                      </TabsTrigger>
+                    ))}
+                    {tasksByDepartment['unassigned'] && (
+                      <TabsTrigger value="unassigned">
+                        General ({tasksByDepartment['unassigned'].length})
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
+
+                  {userDepartments.map(dept => (
+                    <TabsContent key={dept._id} value={dept._id} className="space-y-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-lg font-semibold">{dept.name} Department Tasks</h4>
+                        <span className="text-sm text-muted-foreground">
+                          {tasksByDepartment[dept._id]?.length || 0} tasks
+                        </span>
+                      </div>
+                      {tasksByDepartment[dept._id]?.length > 0 ? (
+                        <div className="space-y-4">
+                          {tasksByDepartment[dept._id].map(renderTaskCard)}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <CheckSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-muted-foreground">No tasks for {dept.name} department</p>
+                        </div>
+                      )}
+                    </TabsContent>
+                  ))}
+
+                  {tasksByDepartment['unassigned'] && (
+                    <TabsContent value="unassigned" className="space-y-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-lg font-semibold">General Tasks</h4>
+                        <span className="text-sm text-muted-foreground">
+                          {tasksByDepartment['unassigned'].length} tasks
+                        </span>
+                      </div>
+                      <div className="space-y-4">
+                        {tasksByDepartment['unassigned'].map(renderTaskCard)}
+                      </div>
+                    </TabsContent>
+                  )}
+                </Tabs>
               ) : (
                 <div className="space-y-4">
                   {myTasks.map(renderTaskCard)}

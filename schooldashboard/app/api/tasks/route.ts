@@ -199,21 +199,17 @@ export async function GET(request: NextRequest) {
       let rawTasks;
       
       try {
-        // Try to populate assignedTo with strictPopulate: false as backup
+        // Safer approach: fetch without assignedTo population first
         rawTasks = await Task.find({})
           .populate('assignedBy', 'name role')
-          .populate({
-            path: 'assignedTo',
-            select: 'name email role',
-            options: { strictPopulate: false }
-          })
+          // Remove .populate('assignedTo') - handle manually
           .sort({ createdAt: -1 });
       } catch (populateError) {
-        console.log('AssignedTo population failed, fetching without it:', populateError);
-        // Fallback: fetch without assignedTo population
-        rawTasks = await Task.find({})
-          .populate('assignedBy', 'name role')
-          .sort({ createdAt: -1 });
+        console.log('Task fetch failed:', populateError);
+        return NextResponse.json(
+          { error: 'Failed to fetch tasks' },
+          { status: 500 }
+        );
       }
       
       // Manually populate assignment user details and assignedTo if needed
@@ -258,50 +254,222 @@ export async function GET(request: NextRequest) {
     } else if (role === 'HOD') {
       console.log('Fetching tasks for HOD');
       const user = await User.findById(userId);
+      
+      if (!user) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
 
+      // Get user's departments (both legacy and new structure)
+      const userDepartmentIds = [];
+      
+      // Legacy department support
+      if (user.departmentId) {
+        userDepartmentIds.push(user.departmentId);
+      }
+      
+      // New multi-department support
+      if (user.departmentRoles && user.departmentRoles.length > 0) {
+        user.departmentRoles.forEach((deptRole: any) => {
+          if (!userDepartmentIds.includes(deptRole.departmentId)) {
+            userDepartmentIds.push(deptRole.departmentId);
+          }
+        });
+      }
 
-      tasks = await Task.find({
+      // Get users in HOD's departments
+      const departmentUsers = await User.find({
         $or: [
-          { departmentId: user.departmentId }, // Tasks in the HOD's department
+          { departmentId: { $in: userDepartmentIds } },
+          { 'departmentRoles.departmentId': { $in: userDepartmentIds } }
+        ]
+      }).distinct('_id');
+
+      let rawTasks = await Task.find({
+        $or: [
+          { departmentId: { $in: userDepartmentIds } }, // Tasks in HOD's departments
           { assignedBy: userId }, // Tasks assigned by the HOD
-          { assignedTo: { $in: await User.find({ departmentId: user.departmentId }).distinct('_id') } } // Tasks assigned to users in the department
+          { assignedTo: { $in: departmentUsers } }, // Legacy: Tasks assigned to users in departments
+          { 'assignments.userId': { $in: departmentUsers } } // New: Tasks with assignments to department users
         ]
       })
         .populate('assignedBy', 'name role')
-        .populate('assignedTo', 'name role')
         .sort({ createdAt: -1 });
+
+      // Manual population and processing
+      tasks = await Promise.all(
+        rawTasks.map(async (task) => {
+          const taskObj = task.toObject();
+          
+          // Handle new assignments structure
+          if (taskObj.assignments && taskObj.assignments.length > 0) {
+            const userIds = taskObj.assignments.map((assignment: any) => assignment.userId);
+            const users = await User.find({ _id: { $in: userIds } }).select('name email role');
+            
+            taskObj.assignments = taskObj.assignments.map((assignment: any) => {
+              const user = users.find(u => u._id.toString() === assignment.userId.toString());
+              return {
+                ...assignment,
+                user: user ? { id: user._id, name: user.name, email: user.email, role: user.role } : null
+              };
+            });
+          }
+          
+          // Handle legacy assignedTo
+          if (taskObj.assignedTo && Array.isArray(taskObj.assignedTo) && taskObj.assignedTo.length > 0) {
+            const firstAssignee = taskObj.assignedTo[0];
+            if (firstAssignee && !firstAssignee.name) {
+              const assignedUserIds = taskObj.assignedTo;
+              const assignedUsers = await User.find({ _id: { $in: assignedUserIds } }).select('name email role');
+              taskObj.assignedTo = assignedUsers.map(user => ({
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+              }));
+            }
+          }
+          
+          return taskObj;
+        })
+      );
     } else if (role === 'COORDINATOR') {
       console.log('Fetching tasks for COORDINATOR');
       const user = await User.findById(userId);
-      console.log('User details:', user);
+      
+      if (!user) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
 
-      tasks = await Task.find({
+      // Get user's departments (both legacy and new structure)
+      const userDepartmentIds = [];
+      
+      // Legacy department support
+      if (user.departmentId) {
+        userDepartmentIds.push(user.departmentId);
+      }
+      
+      // New multi-department support
+      if (user.departmentRoles && user.departmentRoles.length > 0) {
+        user.departmentRoles.forEach((deptRole: any) => {
+          if (!userDepartmentIds.includes(deptRole.departmentId)) {
+            userDepartmentIds.push(deptRole.departmentId);
+          }
+        });
+      }
+
+      // Get professors in coordinator's departments
+      const departmentProfessors = await User.find({
         $or: [
-          { assignedTo: { $in: [userId] } }, // Tasks assigned to the Coordinator
+          { departmentId: { $in: userDepartmentIds }, role: 'PROFESSOR' },
+          { 'departmentRoles.departmentId': { $in: userDepartmentIds }, 'departmentRoles.roles': 'PROFESSOR' }
+        ]
+      }).distinct('_id');
+
+      let rawTasks = await Task.find({
+        $or: [
+          { assignedTo: { $in: [userId] } }, // Tasks assigned to the Coordinator (legacy)
+          { 'assignments.userId': userId }, // Tasks assigned to the Coordinator (new)
           { assignedBy: userId }, // Tasks assigned by the Coordinator
-          { assignedTo: { $in: await User.find({ departmentId: user.departmentId, role: 'PROFESSOR' }).distinct('_id') } } 
+          { assignedTo: { $in: departmentProfessors } }, // Legacy: Tasks assigned to professors in department
+          { 'assignments.userId': { $in: departmentProfessors } } // New: Tasks with assignments to professors
         ]
       })
         .populate('assignedBy', 'name role')
-        .populate('assignedTo', 'name role')
         .sort({ createdAt: -1 });
+
+      // Manual population and processing
+      tasks = await Promise.all(
+        rawTasks.map(async (task) => {
+          const taskObj = task.toObject();
+          
+          // Handle new assignments structure
+          if (taskObj.assignments && taskObj.assignments.length > 0) {
+            const userIds = taskObj.assignments.map((assignment: any) => assignment.userId);
+            const users = await User.find({ _id: { $in: userIds } }).select('name email role');
+            
+            taskObj.assignments = taskObj.assignments.map((assignment: any) => {
+              const user = users.find(u => u._id.toString() === assignment.userId.toString());
+              return {
+                ...assignment,
+                user: user ? { id: user._id, name: user.name, email: user.email, role: user.role } : null
+              };
+            });
+          }
+          
+          // Handle legacy assignedTo
+          if (taskObj.assignedTo && Array.isArray(taskObj.assignedTo) && taskObj.assignedTo.length > 0) {
+            const firstAssignee = taskObj.assignedTo[0];
+            if (firstAssignee && !firstAssignee.name) {
+              const assignedUserIds = taskObj.assignedTo;
+              const assignedUsers = await User.find({ _id: { $in: assignedUserIds } }).select('name email role');
+              taskObj.assignedTo = assignedUsers.map(user => ({
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+              }));
+            }
+          }
+          
+          return taskObj;
+        })
+      );
 
     } else if (role === 'PROFESSOR') {
       console.log('Fetching tasks for PROFESSOR');
-      const baseTasks = await Task.find({ assignedTo: userId })
+      
+      // Get tasks assigned to this professor (both legacy and new structure)
+      let rawTasks = await Task.find({
+        $or: [
+          { assignedTo: userId }, // Legacy assignment
+          { 'assignments.userId': userId } // New assignment structure
+        ]
+      })
         .populate('assignedBy', 'name role')
-        .populate('assignedTo', 'name role')
         .sort({ createdAt: -1 });
 
+      // Process tasks with assignment messages and proper population
       const tasksWithMessages = await Promise.all(
-        baseTasks.map(async (task) => {
+        rawTasks.map(async (task) => {
+          const taskObj = task.toObject();
+          
+          // Handle new assignments structure
+          if (taskObj.assignments && taskObj.assignments.length > 0) {
+            const userIds = taskObj.assignments.map((assignment: any) => assignment.userId);
+            const users = await User.find({ _id: { $in: userIds } }).select('name email role');
+            
+            taskObj.assignments = taskObj.assignments.map((assignment: any) => {
+              const user = users.find(u => u._id.toString() === assignment.userId.toString());
+              return {
+                ...assignment,
+                user: user ? { id: user._id, name: user.name, email: user.email, role: user.role } : null
+              };
+            });
+          }
+          
+          // Handle legacy assignedTo
+          if (taskObj.assignedTo && Array.isArray(taskObj.assignedTo) && taskObj.assignedTo.length > 0) {
+            const firstAssignee = taskObj.assignedTo[0];
+            if (firstAssignee && !firstAssignee.name) {
+              const assignedUserIds = taskObj.assignedTo;
+              const assignedUsers = await User.find({ _id: { $in: assignedUserIds } }).select('name email role');
+              taskObj.assignedTo = assignedUsers.map(user => ({
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+              }));
+            }
+          }
+
+          // Get assignment message from TaskAssignment
           const assignment = await TaskAssignment.findOne({
             taskId: task._id,
             assigneeUserId: userId
           });
 
           return {
-            ...task.toObject(),
+            ...taskObj,
             submissionMessage: assignment?.message || null
           };
         })

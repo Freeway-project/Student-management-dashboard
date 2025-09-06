@@ -28,7 +28,15 @@ interface Task {
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   status: 'ASSIGNED' | 'IN_PROGRESS' | 'SUBMITTED';
   dueAt?: string;
+  departmentId?: string;
   assignedTo: { id: string; name: string; email: string; role: string }[];
+  assignments?: Array<{
+    userId: string;
+    departmentId: string;
+    assignedRole: string;
+    status: string;
+    user?: { id: string; name: string; email: string; role: string };
+  }>;
   assignedBy: { id: string; name: string; email: string; role: string };
   requiredDeliverables: Deliverable[];
   submissionMessage?: string;
@@ -39,6 +47,9 @@ interface Task {
 export default function TeacherDashboard() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasksByDepartment, setTasksByDepartment] = useState<{[key: string]: Task[]}>({});
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [userDepartments, setUserDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<{ [key: string]: string | null }>({});
@@ -46,18 +57,93 @@ export default function TeacherDashboard() {
   const [uploadProgress, setUploadProgress] = useState<{[key: number]: number}>({});
   const [submissionMessage, setSubmissionMessage] = useState('');
 
+  // Helper function to get task assignees
+  const getTaskAssignees = (task: Task) => {
+    if (task.assignments && task.assignments.length > 0) {
+      return task.assignments.map((assignment: any) => assignment.user || { name: 'Unknown', role: 'Unknown' });
+    }
+    return task.assignedTo || [];
+  };
+
+  // Helper function to group tasks by department
+  const groupTasksByDepartment = (tasks: Task[], departments: any[]) => {
+    const grouped: {[key: string]: Task[]} = {};
+    
+    departments.forEach(dept => {
+      grouped[dept._id] = tasks.filter(task => {
+        // Check if task is assigned to this department
+        if (task.assignments && task.assignments.length > 0) {
+          return task.assignments.some((assignment: any) => assignment.departmentId === dept._id);
+        }
+        // Fallback to task's departmentId
+        return task.departmentId === dept._id;
+      });
+    });
+    
+    // Add tasks without department assignment
+    const unassignedTasks = tasks.filter(task => {
+      if (task.assignments && task.assignments.length > 0) {
+        return !task.assignments.some((assignment: any) => 
+          departments.some(dept => dept._id === assignment.departmentId)
+        );
+      }
+      return !departments.some(dept => dept._id === task.departmentId);
+    });
+    
+    if (unassignedTasks.length > 0) {
+      grouped['unassigned'] = unassignedTasks;
+    }
+    
+    return grouped;
+  };
+
   useEffect(() => {
     if (user) {
       fetchTasks();
+      fetchDepartments();
     }
   }, [user]);
+
+  // Re-group tasks when departments are loaded
+  useEffect(() => {
+    if (departments.length > 0 && tasks.length > 0) {
+      const groupedTasks = groupTasksByDepartment(tasks, departments);
+      setTasksByDepartment(groupedTasks);
+      
+      // Set user's departments (for tabs)
+      const userDepts = departments.filter(dept => {
+        // Check if user has any tasks in this department
+        return groupedTasks[dept._id] && groupedTasks[dept._id].length > 0;
+      });
+      setUserDepartments(userDepts);
+    }
+  }, [departments, tasks]);
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await fetch('/api/departments');
+      if (response.ok) {
+        const data = await response.json();
+        setDepartments(data.departments || []);
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+    }
+  };
 
   const fetchTasks = async () => {
     try {
       const response = await fetch(`/api/tasks?userId=${user?.id}&role=${user?.role}`);
       if (response.ok) {
         const data = await response.json();
-        setTasks(data.tasks || []);
+        const fetchedTasks = data.tasks || [];
+        setTasks(fetchedTasks);
+        
+        // Group tasks by department if departments are loaded
+        if (departments.length > 0) {
+          const groupedTasks = groupTasksByDepartment(fetchedTasks, departments);
+          setTasksByDepartment(groupedTasks);
+        }
       }
     } catch (error) {
       console.error('Error fetching tasks:', error);
@@ -334,6 +420,112 @@ export default function TeacherDashboard() {
                   <CheckSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground">No tasks assigned</p>
                 </div>
+              ) : userDepartments.length > 0 ? (
+                <Tabs defaultValue={userDepartments[0]?._id} className="w-full">
+                  <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${userDepartments.length + (tasksByDepartment['unassigned'] ? 1 : 0)}, 1fr)` }}>
+                    {userDepartments.map(dept => (
+                      <TabsTrigger key={dept._id} value={dept._id}>
+                        {dept.name} ({tasksByDepartment[dept._id]?.length || 0})
+                      </TabsTrigger>
+                    ))}
+                    {tasksByDepartment['unassigned'] && (
+                      <TabsTrigger value="unassigned">
+                        General ({tasksByDepartment['unassigned'].length})
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
+
+                  {userDepartments.map(dept => (
+                    <TabsContent key={dept._id} value={dept._id} className="space-y-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-lg font-semibold">{dept.name} Department Tasks</h4>
+                        <span className="text-sm text-muted-foreground">
+                          {tasksByDepartment[dept._id]?.length || 0} tasks
+                        </span>
+                      </div>
+                      {tasksByDepartment[dept._id]?.length > 0 ? (
+                        <div className="space-y-4">
+                          {tasksByDepartment[dept._id].map((task: Task) => (
+                            <div
+                              key={task._id}
+                              className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                              onClick={() => setSelectedTask(task)}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h3 className="font-semibold text-lg">{task.title}</h3>
+                                  <p className="text-muted-foreground text-sm mt-1">
+                                    {task.description}
+                                  </p>
+                                  {task.dueAt && (
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                      Due: {new Date(task.dueAt).toLocaleDateString()}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex flex-col gap-2 items-end">
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                                    {task.priority}
+                                  </span>
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
+                                    {task.status.replace('_', ' ')}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <CheckSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-muted-foreground">No tasks for {dept.name} department</p>
+                        </div>
+                      )}
+                    </TabsContent>
+                  ))}
+
+                  {tasksByDepartment['unassigned'] && (
+                    <TabsContent value="unassigned" className="space-y-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-lg font-semibold">General Tasks</h4>
+                        <span className="text-sm text-muted-foreground">
+                          {tasksByDepartment['unassigned'].length} tasks
+                        </span>
+                      </div>
+                      <div className="space-y-4">
+                        {tasksByDepartment['unassigned'].map((task: Task) => (
+                          <div
+                            key={task._id}
+                            className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => setSelectedTask(task)}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-lg">{task.title}</h3>
+                                <p className="text-muted-foreground text-sm mt-1">
+                                  {task.description}
+                                </p>
+                                {task.dueAt && (
+                                  <p className="text-xs text-muted-foreground mt-2">
+                                    Due: {new Date(task.dueAt).toLocaleDateString()}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex flex-col gap-2 items-end">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                                  {task.priority}
+                                </span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
+                                  {task.status.replace('_', ' ')}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </TabsContent>
+                  )}
+                </Tabs>
               ) : (
                 <div className="space-y-4">
                   {tasks.map((task) => (

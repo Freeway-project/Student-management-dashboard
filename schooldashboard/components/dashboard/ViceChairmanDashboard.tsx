@@ -300,11 +300,29 @@ export default function ViceChairmanDashboard() {
       });
     }
 
+    // GROUP DEPARTMENTS FOR DISPLAY (Vice-Chairman version without tasks)
+    const departmentsByRole = userDepartments.map(dept => ({
+      ...dept,
+      departmentStats: {
+        userCount: users.filter(u => 
+          u.department?.id === dept.id || 
+          (u as any).departmentRoles?.some((dr: any) => dr.departmentId === dept.id)
+        ).length,
+        activeUsers: users.filter(u => 
+          (u.department?.id === dept.id || 
+           (u as any).departmentRoles?.some((dr: any) => dr.departmentId === dept.id)) &&
+          u.lastLoginAt
+        ).length
+      }
+    }));
+
     return {
       ...user,
       departments: userDepartments,
+      departmentsByRole,
       stats: {
-        totalDepartments: userDepartments.length
+        totalDepartments: userDepartments.length,
+        primaryDepartment: userDepartments.find(d => d.isPrimary)?.name || 'None'
       }
     };
   };
